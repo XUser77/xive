@@ -19,3 +19,4 @@ pub mod collateral {
         initialize::handler(ctx)
     }
 }
+

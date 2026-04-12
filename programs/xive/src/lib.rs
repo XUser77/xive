@@ -18,5 +18,9 @@ pub mod xive {
     pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
         initialize::handler(ctx)
     }
+
+    pub fn create_collateral(ctx: Context<CreateCollateral>) -> Result<()> {
+        create_collateral::handler(ctx)
+    }
 }
 
