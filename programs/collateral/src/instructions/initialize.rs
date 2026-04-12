@@ -24,13 +24,20 @@ pub struct Initialize<'info> {
 
 pub fn handler(ctx: Context<Initialize>) -> Result<()> {
     let token_mint = ctx.accounts.collateral_token_mint.key();
+    let collateral_key = ctx.accounts.collateral.key();
+    let now = Clock::get()?.unix_timestamp;
+
     let collateral = &mut ctx.accounts.collateral;
     collateral.token_mint = token_mint;
+    collateral.price = 0;
+    collateral.price_updated_at = now;
     collateral.bump = ctx.bumps.collateral;
 
     msg!("Collateral created");
     msg!("Collateral token mint: {}", token_mint);
-    msg!("Collateral PDA: {}", ctx.accounts.collateral.key());
+    msg!("Collateral PDA: {}", collateral_key);
+    msg!("Initial price: {}", collateral.price);
+    msg!("Price updated at: {}", collateral.price_updated_at);
     Ok(())
 }
 

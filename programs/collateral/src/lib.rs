@@ -18,5 +18,9 @@ pub mod collateral {
     pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
         initialize::handler(ctx)
     }
+
+    pub fn set_price(ctx: Context<SetPrice>, price: u64) -> Result<()> {
+        set_price::handler(ctx, price)
+    }
 }
 
