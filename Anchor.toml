@@ -6,6 +6,7 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
+collateral = "6TPqsNa3CKNF5npmNQJKd337GCbSbEtb7KneN47eZS5G"
 peg_keeper = "A8tMTgoWVYK8yaDmQYdpUr7sZ1hcVz3URz8aXGnncB2s"
 xive = "6mYicupeJFCmSt8VzP9s7FipRGRSKbeHFw8gAVjXAmKR"
 

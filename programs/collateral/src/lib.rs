@@ -9,14 +9,13 @@ pub use constants::*;
 pub use instructions::*;
 pub use state::*;
 
-declare_id!("6mYicupeJFCmSt8VzP9s7FipRGRSKbeHFw8gAVjXAmKR");
+declare_id!("6TPqsNa3CKNF5npmNQJKd337GCbSbEtb7KneN47eZS5G");
 
 #[program]
-pub mod xive {
+pub mod collateral {
     use super::*;
 
     pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
         initialize::handler(ctx)
     }
 }
-

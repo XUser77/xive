@@ -1,5 +1,4 @@
 use anchor_lang::prelude::*;
 
 #[constant]
-pub const XIVE_SEED: &str = "xive";
-
+pub const SEED: &str = "anchor";
