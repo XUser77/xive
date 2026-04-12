@@ -4,5 +4,9 @@ use anchor_lang::prelude::*;
 pub enum ErrorCode {
     #[msg("Unauthorized")]
     Unauthorized,
+    #[msg("Collateral price is zero")]
+    ZeroPrice,
+    #[msg("Insufficient collateral value")]
+    InsufficientCollateral,
 }
 

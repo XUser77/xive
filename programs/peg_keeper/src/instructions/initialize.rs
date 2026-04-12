@@ -40,6 +40,7 @@ pub fn handler(ctx: Context<Initialize>) -> Result<()> {
     let peg_keeper = &mut ctx.accounts.peg_keeper;
     peg_keeper.admin = ctx.accounts.payer.key();
     peg_keeper.xusd_mint = xusd_mint_key;
+    peg_keeper.authorized_minter = Pubkey::default();
     peg_keeper.bump = ctx.bumps.peg_keeper;
     peg_keeper.mint_bump = ctx.bumps.xusd_mint;
     peg_keeper.decimals = XUSD_DECIMALS;

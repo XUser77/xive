@@ -6,15 +6,16 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-collateral = "6TPqsNa3CKNF5npmNQJKd337GCbSbEtb7KneN47eZS5G"
-peg_keeper = "A8tMTgoWVYK8yaDmQYdpUr7sZ1hcVz3URz8aXGnncB2s"
-xive = "6mYicupeJFCmSt8VzP9s7FipRGRSKbeHFw8gAVjXAmKR"
+collateral = "3qiZw1HDmqhT2gQj5MQyfFetxe9Hx8CUPJiTsCs9LFkm"
+peg_keeper = "BShpFcv65t5sJMFWEZEufsCcU7imeQSakZw1xZjLNJGu"
+xive = "Aiz3dMSA1y45gdU4Z1xYxirRYW5HErYx4LgY8voHNkLJ"
+
+[registry]
+url = "https://api.apr.dev"
 
 [provider]
 cluster = "localnet"
-wallet = "~/.config/solana/id.json"
+wallet = "./keys/test-wallet.json"
 
 [scripts]
 test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 \"tests/**/*.ts\""
-
-[hooks]

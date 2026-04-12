@@ -9,7 +9,7 @@ pub use constants::*;
 pub use instructions::*;
 pub use state::*;
 
-declare_id!("6mYicupeJFCmSt8VzP9s7FipRGRSKbeHFw8gAVjXAmKR");
+declare_id!("Aiz3dMSA1y45gdU4Z1xYxirRYW5HErYx4LgY8voHNkLJ");
 
 #[program]
 pub mod xive {
@@ -21,6 +21,10 @@ pub mod xive {
 
     pub fn create_collateral(ctx: Context<CreateCollateral>) -> Result<()> {
         create_collateral::handler(ctx)
+    }
+
+    pub fn take_loan(ctx: Context<TakeLoan>, collateral_amount: u64) -> Result<()> {
+        take_loan::handler(ctx, collateral_amount)
     }
 }
 

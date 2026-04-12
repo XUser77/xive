@@ -9,7 +9,7 @@ pub use constants::*;
 pub use instructions::*;
 pub use state::*;
 
-declare_id!("6TPqsNa3CKNF5npmNQJKd337GCbSbEtb7KneN47eZS5G");
+declare_id!("3qiZw1HDmqhT2gQj5MQyfFetxe9Hx8CUPJiTsCs9LFkm");
 
 #[program]
 pub mod collateral {

@@ -14,14 +14,16 @@ cpi = ["no-entrypoint"]
 no-entrypoint = []
 no-idl = []
 no-log-ix-name = []
-idl-build = ["anchor-lang/idl-build", "collateral/idl-build"]
+idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build", "collateral/idl-build", "peg_keeper/idl-build"]
 anchor-debug = []
 custom-heap = []
 custom-panic = []
 
 [dependencies]
-anchor-lang = "1.0.0"
+anchor-lang = { version = "1.0.0", features = ["init-if-needed"] }
+anchor-spl = "1.0.0"
 collateral = { path = "../collateral", features = ["cpi"] }
+peg_keeper = { path = "../peg_keeper", features = ["cpi"] }
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(target_os, values("solana"))'] }
