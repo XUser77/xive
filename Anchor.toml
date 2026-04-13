@@ -6,9 +6,8 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-collateral = "3qiZw1HDmqhT2gQj5MQyfFetxe9Hx8CUPJiTsCs9LFkm"
-peg_keeper = "BShpFcv65t5sJMFWEZEufsCcU7imeQSakZw1xZjLNJGu"
-xive = "Aiz3dMSA1y45gdU4Z1xYxirRYW5HErYx4LgY8voHNkLJ"
+peg_keeper = "xpeguefXy5MrgkbirCyuCCD5EfbUM5UfejdQduDcGz6"
+xive = "xiveHxXiqHUkFnX5DsmTsAbByTZS5bdGGpdZ9wpmNCR"
 
 [registry]
 url = "https://api.apr.dev"

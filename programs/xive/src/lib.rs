@@ -19,12 +19,6 @@ pub mod xive {
         initialize::handler(ctx)
     }
 
-    pub fn create_collateral(ctx: Context<CreateCollateral>) -> Result<()> {
-        create_collateral::handler(ctx)
-    }
 
-    pub fn take_loan(ctx: Context<TakeLoan>, collateral_amount: u64) -> Result<()> {
-        take_loan::handler(ctx, collateral_amount)
-    }
 }
 
