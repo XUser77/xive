@@ -4,7 +4,7 @@
  */
 import { spawn, spawnSync } from "child_process";
 import path from "path";
-import { Keypair } from "@solana/web3.js";
+import { Keypair, PublicKey } from "@solana/web3.js";
 import * as anchor from "@anchor-lang/core";
 import {Program} from "@anchor-lang/core";
 import type { PegKeeper } from "../target/types/peg_keeper.ts";
@@ -13,6 +13,17 @@ import { PROJECT_ROOT, RPC_URL, pubKey, rpcCall, isRpcUp, poll, getKeyPair } fro
 
 const DEPLOY_WALLET = path.join(PROJECT_ROOT, "keys/deploy-wallet.json");
 const TEST_WALLET = path.join(PROJECT_ROOT, "keys/test-wallet.json");
+
+const COLLATERALS = {
+  WETH: {
+    mint: '7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs',
+    tvl: 9000 // 90%
+  },
+  WBTC: {
+    mint: '5XZw2LKTyrfvfiskJ78AMpackRjPcyCif1WhUsPDuVqQ',
+    tvl: 9000 // 90%
+  },
+};
 
 const PROGRAMS: { name: string; so: string; keypair: string }[] = [
   { name: "peg_keeper", so: "target/deploy/peg_keeper.so", keypair: "keys/peg-keeper-program.json" },
@@ -94,6 +105,21 @@ async function initPrograms(deployKeyPair: Keypair): Promise<void> {
   log(`XUSD address: ${mintAccountKeypair.publicKey.toBase58()}`);
 }
 
+async function addCollaterals(deployKeyPair: Keypair): Promise<void> {
+  const xiveProgram = anchor.workspace.xive as Program<Xive>;
+  for (const token in COLLATERALS) {
+    log(`Adding collateral ${token} (${COLLATERALS[token].tvl / 100.0} %)...`);
+    await xiveProgram.methods
+      .allowCollateral(new anchor.BN(COLLATERALS[token].tvl))
+      .accounts({
+        admin: deployKeyPair.publicKey,
+        collateralMint: new PublicKey(COLLATERALS[token].mint),
+      })
+      .signers([deployKeyPair])
+      .rpc();
+  }
+}
+
 async function resetAndDeploy(): Promise<void> {
   console.log("  [hooks] Resetting network state...");
   await rpcCall("surfnet_resetNetwork");
@@ -113,6 +139,7 @@ async function resetAndDeploy(): Promise<void> {
   buildPrograms();
   deployPrograms();
   await initPrograms(deployKeyPair);
+  await addCollaterals(deployKeyPair);
 }
 
 export const mochaHooks = {

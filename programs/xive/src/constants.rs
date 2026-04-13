@@ -12,3 +12,6 @@ pub const PEG_KEEPER_PROGRAM_ID: &str = "xpeguefXy5MrgkbirCyuCCD5EfbUM5UfejdQduD
 #[constant]
 pub const PEG_KEEPER_SEED: &str = "peg-keeper";
 
+#[constant]
+pub const COLLATERAL_SEED: &str = "collateral";
+
