@@ -8,8 +8,8 @@ pub struct MintXusd<'info> {
     #[account(
         seeds = [PEG_KEEPER_SEED.as_bytes()],
         bump = peg_keeper.bump,
-        has_one = authorized_minter,
         has_one = xusd_mint,
+        has_one = xive,
     )]
     pub peg_keeper: Account<'info, PegKeeper>,
 
@@ -20,6 +20,8 @@ pub struct MintXusd<'info> {
 
     #[account(mut)]
     pub recipient_token_account: Account<'info, TokenAccount>,
+
+    pub xive: Signer<'info>,
 
     pub token_program: Program<'info, Token>,
 }

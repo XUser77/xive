@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, Token};
 
-use crate::{PegKeeper, XUSD_MINT, PEG_KEEPER_SEED, XUSD_DECIMALS};
+use crate::{PegKeeper, XUSD_MINT, PEG_KEEPER_SEED, XUSD_DECIMALS, XIVE_PROGRAM_ID, XIVE_SEED};
 
 #[derive(Accounts)]
 pub struct Initialize<'info> {
@@ -37,9 +37,12 @@ pub fn handler(ctx: Context<Initialize>) -> Result<()> {
     let xusd_mint_key = ctx.accounts.xusd_mint.key();
 
     let peg_keeper = &mut ctx.accounts.peg_keeper;
+    let xive_program_id = XIVE_PROGRAM_ID.parse::<Pubkey>().unwrap();
+    let (xive_pda, _) = Pubkey::find_program_address(&[XIVE_SEED.as_bytes()], &xive_program_id);
+
     peg_keeper.admin = ctx.accounts.payer.key();
     peg_keeper.xusd_mint = xusd_mint_key;
-    peg_keeper.authorized_minter = Pubkey::default();
+    peg_keeper.xive = xive_pda;
     peg_keeper.bump = ctx.bumps.peg_keeper;
     peg_keeper.decimals = XUSD_DECIMALS;
 

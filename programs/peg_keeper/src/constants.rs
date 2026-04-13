@@ -9,3 +9,9 @@ pub const PEG_KEEPER_SEED: &str = "peg-keeper";
 #[constant]
 pub const XUSD_DECIMALS: u8 = 6;
 
+#[constant]
+pub const XIVE_PROGRAM_ID: &str = "xiveHxXiqHUkFnX5DsmTsAbByTZS5bdGGpdZ9wpmNCR";
+
+#[constant]
+pub const XIVE_SEED: &str = "xive";
+

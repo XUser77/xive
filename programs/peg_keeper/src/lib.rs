@@ -19,12 +19,12 @@ pub mod peg_keeper {
         initialize::handler(ctx)
     }
 
-    pub fn set_authorized_minter(ctx: Context<SetAuthorizedMinter>, minter: Pubkey) -> Result<()> {
-        set_authorized_minter::handler(ctx, minter)
-    }
-
     pub fn mint_xusd(ctx: Context<MintXusd>, amount: u64) -> Result<()> {
         mint_xusd::handler(ctx, amount)
+    }
+
+    pub fn hello(ctx: Context<Hello>) -> Result<()> {
+        hello::handler(ctx)
     }
 }
 
