@@ -9,7 +9,7 @@ pub use constants::*;
 pub use instructions::*;
 pub use state::*;
 
-declare_id!("BShpFcv65t5sJMFWEZEufsCcU7imeQSakZw1xZjLNJGu");
+declare_id!("xpeguefXy5MrgkbirCyuCCD5EfbUM5UfejdQduDcGz6");
 
 #[program]
 pub mod peg_keeper {

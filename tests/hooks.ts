@@ -4,16 +4,42 @@
  */
 import { spawn, spawnSync } from "child_process";
 import path from "path";
+import { PublicKey, Keypair } from "@solana/web3.js";
+import * as anchor from "@anchor-lang/core";
+import * as fs from "node:fs";
+import {Program} from "@anchor-lang/core";
+import type { PegKeeper } from "../target/types/peg_keeper.ts";
+import type { Xive } from "../target/types/xive.ts";
 
 const RPC_URL = "http://127.0.0.1:8899";
 const PROJECT_ROOT = process.cwd();
-const WALLET = path.join(PROJECT_ROOT, "keys/test-wallet.json");
+const DEPLOY_WALLET = path.join(PROJECT_ROOT, "keys/deploy-wallet.json");
+const TEST_WALLET = path.join(PROJECT_ROOT, "keys/test-wallet.json");
 
-const PROGRAM_IDS = [
-  "Aiz3dMSA1y45gdU4Z1xYxirRYW5HErYx4LgY8voHNkLJ", // xive
-  "BShpFcv65t5sJMFWEZEufsCcU7imeQSakZw1xZjLNJGu", // peg_keeper
-  "3qiZw1HDmqhT2gQj5MQyfFetxe9Hx8CUPJiTsCs9LFkm", // collateral
+const WETH_MINT = new PublicKey("7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs");
+
+const PROGRAMS: { name: string; so: string; keypair: string }[] = [
+  { name: "collateral", so: "target/deploy/collateral.so", keypair: "target/deploy/collateral-keypair.json" },
+  { name: "peg_keeper", so: "target/deploy/peg_keeper.so", keypair: "keys/peg-keeper-program.json" },
+  { name: "xive",       so: "target/deploy/xive.so",       keypair: "keys/xive-program.json" },
 ];
+
+const XUSD_MINT_KEY_PAIR = "keys/xusd-mint-keypair.json";
+
+function pubKey(keypairPath: string): string {
+  const r = spawnSync("solana-keygen", ["pubkey", keypairPath], {
+    cwd: PROJECT_ROOT, encoding: "utf8", stdio: "pipe",
+  });
+  return r.stdout.trim();
+}
+
+function log(line: string, ...args: any[]) {
+  if (args.length == 0) {
+    console.log(`  [hooks] ${line}`);
+  } else {
+    console.log(`  [hooks] ${line}`, args);
+  }
+}
 
 async function rpcCall(method: string, params: any[] = []): Promise<any> {
   const res = await fetch(RPC_URL, {
@@ -33,18 +59,6 @@ async function isRpcUp(): Promise<boolean> {
   }
 }
 
-async function areProgramsDeployed(): Promise<boolean> {
-  try {
-    for (const id of PROGRAM_IDS) {
-      const res = await rpcCall("getAccountInfo", [id, { encoding: "base64" }]);
-      if (!res.result?.value) return false;
-    }
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 async function poll(
   check: () => Promise<boolean>,
   timeoutMs: number,
@@ -58,11 +72,27 @@ async function poll(
   throw new Error(`Timed out waiting for: ${label}`);
 }
 
-const PROGRAMS: { name: string; so: string; keypair: string }[] = [
-  { name: "collateral", so: "target/deploy/collateral.so", keypair: "target/deploy/collateral-keypair.json" },
-  { name: "peg_keeper", so: "target/deploy/peg_keeper.so", keypair: "target/deploy/peg_keeper-keypair.json" },
-  { name: "xive",       so: "target/deploy/xive.so",       keypair: "target/deploy/xive-keypair.json" },
-];
+function getKeyPair(path: string) {
+  const keypairFile = fs.readFileSync(path, "utf-8");
+  const keypairData = JSON.parse(keypairFile);
+  return anchor.web3.Keypair.fromSecretKey(
+    Uint8Array.from(keypairData)
+  );
+}
+
+function buildPrograms(): void {
+  console.log(`  [hooks] Building programs...`);
+  const result = spawnSync(
+    "anchor",
+    [
+      "build",
+    ],
+    { cwd: PROJECT_ROOT, stdio: "pipe", encoding: "utf8" },
+  );
+  if (result.status !== 0) {
+    throw new Error(`Build failed:\n${result.stdout}\n${result.stderr}`);
+  }
+}
 
 function deployPrograms(): void {
   for (const { name, so, keypair } of PROGRAMS) {
@@ -72,7 +102,7 @@ function deployPrograms(): void {
       [
         "program", "deploy",
         "--url", RPC_URL,
-        "--keypair", WALLET,
+        "--keypair", DEPLOY_WALLET,
         "--program-id", keypair,
         so,
       ],
@@ -81,32 +111,66 @@ function deployPrograms(): void {
     if (result.status !== 0) {
       throw new Error(`Deploy ${name} failed:\n${result.stdout}\n${result.stderr}`);
     }
+    const id = pubKey(keypair);
+    console.log(`  [hooks] Deployed ${name} program: ${id}`)
   }
   console.log("  [hooks] Programs deployed");
 }
 
-function walletPubkey(): string {
-  const result = spawnSync("solana-keygen", ["pubkey", WALLET], {
-    encoding: "utf8",
-    stdio: "pipe",
-  });
-  return result.stdout.trim();
+async function initPrograms(deployKeyPair: Keypair): Promise<void> {
+  log("Initializing xive...");
+  const xiveProgram = anchor.workspace.xive as Program<Xive>;
+  await xiveProgram.methods
+    .initialize()
+    .accounts({
+      payer: deployKeyPair.publicKey
+    })
+    .signers([deployKeyPair])
+    .rpc();
+  log("Xive initialized");
+
+  log("Initializing peg_keeper...");
+  // Peg Keeper
+  const pegKeeperProgram = anchor.workspace.pegKeeper as Program<PegKeeper>;
+  const mintAccountKeypair = getKeyPair(XUSD_MINT_KEY_PAIR);
+  await pegKeeperProgram.methods
+    .initialize()
+    .accounts({
+      payer: deployKeyPair.publicKey,
+      xusdMint: mintAccountKeypair.publicKey
+    })
+    .signers([deployKeyPair, mintAccountKeypair])
+    .rpc();
+  log("Peg keeper initialized");
+  log(`XUSD address: ${mintAccountKeypair.publicKey.toBase58()}`);
 }
 
 async function resetAndDeploy(): Promise<void> {
   console.log("  [hooks] Resetting network state...");
   await rpcCall("surfnet_resetNetwork");
 
+  const deployKeyPair = getKeyPair(DEPLOY_WALLET);
+  const testKeyPair = getKeyPair(TEST_WALLET);
+
   // Re-fund test wallet after reset (balance was cleared)
-  const pubkey = walletPubkey();
-  console.log(`  [hooks] Funding test wallet ${pubkey}...`);
+
+  const deployPubkey = deployKeyPair.publicKey.toBase58();
+  console.log(`  [hooks] Funding deploy wallet ${deployPubkey}...`);
   await rpcCall("surfnet_setAccount", [
-    pubkey,
+    deployPubkey,
     { lamports: 100_000_000_000 }, // 100 SOL
   ]);
 
+  const testPubKey = testKeyPair.publicKey.toBase58();
+  console.log(`  [hooks] Funding test wallet ${testPubKey}...`);
+  await rpcCall("surfnet_setAccount", [
+    testPubKey,
+    { lamports: 100_000_000_000 }, // 100 SOL
+  ]);
+
+  buildPrograms();
   deployPrograms();
-  await poll(areProgramsDeployed, 30_000, "program deployment");
+  await initPrograms(deployKeyPair);
 }
 
 export const mochaHooks = {
@@ -126,7 +190,7 @@ export const mochaHooks = {
         "--network", "mainnet",
         "--legacy-anchor-compatibility",
         "--no-deploy",
-        "--airdrop-keypair-path", WALLET,
+        "--airdrop-keypair-path", DEPLOY_WALLET,
         "--ci",
         "--daemon",
       ],

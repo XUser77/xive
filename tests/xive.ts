@@ -58,7 +58,7 @@ describe("xive — take loan with WETH collateral (surfpool mainnet fork)", () =
     provider = anchor.AnchorProvider.env();
     anchor.setProvider(provider);
 
-xiveProgram = anchor.workspace.xive as Program<Xive>;
+    xiveProgram = anchor.workspace.xive as Program<Xive>;
     pegKeeperProgram = anchor.workspace.pegKeeper as Program<PegKeeper>;
     collateralProgram = anchor.workspace.collateral as Program<Collateral>;
 
@@ -99,7 +99,10 @@ xiveProgram = anchor.workspace.xive as Program<Xive>;
   });
 
   it("initializes peg_keeper and XUSD mint", async () => {
-    const tx = await pegKeeperProgram.methods.initialize().rpc();
+    const tx = await pegKeeperProgram.methods
+      .initialize()
+      .accounts({})
+      .rpc();
     console.log("  peg_keeper initialized:", tx);
 
     const pk = await pegKeeperProgram.account.pegKeeper.fetch(pegKeeperPda);

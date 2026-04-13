@@ -9,7 +9,7 @@ pub use constants::*;
 pub use instructions::*;
 pub use state::*;
 
-declare_id!("Aiz3dMSA1y45gdU4Z1xYxirRYW5HErYx4LgY8voHNkLJ");
+declare_id!("xiveHxXiqHUkFnX5DsmTsAbByTZS5bdGGpdZ9wpmNCR");
 
 #[program]
 pub mod xive {

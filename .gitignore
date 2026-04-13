@@ -10,3 +10,4 @@ solana-test-validator-ledger/
 coverage/
 *.so
 *.tsbuildinfo
+/vanity

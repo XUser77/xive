@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, Token};
 
-use crate::{PegKeeper, PEG_KEEPER_SEED, XUSD_DECIMALS, XUSD_MINT_SEED};
+use crate::{PegKeeper, XUSD_MINT, PEG_KEEPER_SEED, XUSD_DECIMALS};
 
 #[derive(Accounts)]
 pub struct Initialize<'info> {
@@ -20,8 +20,7 @@ pub struct Initialize<'info> {
     #[account(
         init,
         payer = payer,
-        seeds = [XUSD_MINT_SEED.as_bytes()],
-        bump,
+        address = XUSD_MINT.parse::<Pubkey>().unwrap(),
         mint::decimals = XUSD_DECIMALS,
         mint::authority = peg_keeper,
         mint::freeze_authority = peg_keeper,
@@ -42,7 +41,6 @@ pub fn handler(ctx: Context<Initialize>) -> Result<()> {
     peg_keeper.xusd_mint = xusd_mint_key;
     peg_keeper.authorized_minter = Pubkey::default();
     peg_keeper.bump = ctx.bumps.peg_keeper;
-    peg_keeper.mint_bump = ctx.bumps.xusd_mint;
     peg_keeper.decimals = XUSD_DECIMALS;
 
     msg!("Peg Keeper singleton initialized");
