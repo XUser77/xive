@@ -1,31 +1,30 @@
 use anchor_lang::prelude::*;
 
-use crate::{Collateral, Xive, COLLATERAL_SEED, XIVE_SEED};
+use crate::{Collateral, COLLATERAL_SEED};
 
 #[derive(Accounts)]
 pub struct SetPrice<'info> {
+    pub payer: Signer<'info>,
+
+    #[account(constraint = program.programdata_address()? == Some(program_data.key()))]
+    pub program: Program<'info, crate::program::Xive>,
 
     #[account(
-        seeds = [XIVE_SEED.as_bytes()],
-        bump = xive.bump,
-        has_one = admin
+        constraint = program_data.upgrade_authority_address == Some(payer.key()),
     )]
-    pub xive: Account<'info, Xive>,
+    pub program_data: Account<'info, ProgramData>,
 
     #[account(
         mut,
         seeds = [COLLATERAL_SEED.as_bytes(), collateral.mint.as_ref()],
-        bump = collateral.bump
+        bump = collateral.bump,
     )]
     pub collateral: Account<'info, Collateral>,
-
-    #[account(mut)]
-    pub admin: Signer<'info>,
-
 }
 
 pub fn handler(ctx: Context<SetPrice>, price: u64) -> Result<()> {
     ctx.accounts.collateral.price = price;
     ctx.accounts.collateral.price_date = Clock::get()?.unix_timestamp;
+    msg!("Price set: {}", price);
     Ok(())
 }

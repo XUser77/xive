@@ -1,25 +1,26 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::Mint;
 
-use crate::{Collateral, Xive, COLLATERAL_SEED, XIVE_SEED};
+use crate::{Collateral, COLLATERAL_SEED};
 
 #[derive(Accounts)]
 pub struct AllowCollateral<'info> {
     #[account(mut)]
-    pub admin: Signer<'info>,
+    pub payer: Signer<'info>,
+
+    #[account(constraint = program.programdata_address()? == Some(program_data.key()))]
+    pub program: Program<'info, crate::program::Xive>,
 
     #[account(
-        seeds = [XIVE_SEED.as_bytes()],
-        bump = xive.bump,
-        has_one = admin,
+        constraint = program_data.upgrade_authority_address == Some(payer.key()),
     )]
-    pub xive: Account<'info, Xive>,
+    pub program_data: Account<'info, ProgramData>,
 
-    pub collateral_mint: Account<'info, Mint>,
+    /// CHECK: only used as address for collateral PDA derivation
+    pub collateral_mint: UncheckedAccount<'info>,
 
     #[account(
         init_if_needed,
-        payer = admin,
+        payer = payer,
         space = 8 + Collateral::INIT_SPACE,
         seeds = [COLLATERAL_SEED.as_bytes(), collateral_mint.key().as_ref()],
         bump,
@@ -34,10 +35,8 @@ pub fn handler(ctx: Context<AllowCollateral>, ltv: u64, price: u64) -> Result<()
 
     collateral.mint = ctx.accounts.collateral_mint.key();
     collateral.bump = ctx.bumps.collateral;
-
     collateral.allowed = true;
     collateral.ltv = ltv;
-
     collateral.price = price;
     collateral.price_date = Clock::get()?.unix_timestamp;
 

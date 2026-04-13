@@ -7,5 +7,6 @@ pub mod lend;
 pub use allow_collateral::*;
 pub use disallow_collateral::*;
 pub use initialize::*;
+pub use lend::*;
 pub use set_price::*;
 

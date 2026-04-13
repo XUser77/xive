@@ -30,4 +30,8 @@ pub mod xive {
     pub fn set_price(ctx: Context<SetPrice>, price: u64) -> Result<()> {
         set_price::handler(ctx, price)
     }
+
+    pub fn lend(ctx: Context<Lend>, collateral_amount: u64, loan_amount: u64) -> Result<()> {
+        lend::handler(ctx, collateral_amount, loan_amount)
+    }
 }

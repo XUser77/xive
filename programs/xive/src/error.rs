@@ -8,5 +8,7 @@ pub enum ErrorCode {
     ZeroPrice,
     #[msg("Insufficient collateral value")]
     InsufficientCollateral,
+    #[msg("Collateral not allowed")]
+    CollateralNotAllowed,
 }
 
