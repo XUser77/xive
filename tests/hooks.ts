@@ -17,11 +17,13 @@ const TEST_WALLET = path.join(PROJECT_ROOT, "keys/test-wallet.json");
 const COLLATERALS = {
   WETH: {
     mint: '7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs',
-    tvl: 9000 // 90%
+    tvl: 9000, // 90%
+    price: 3000,
   },
   WBTC: {
     mint: '5XZw2LKTyrfvfiskJ78AMpackRjPcyCif1WhUsPDuVqQ',
-    tvl: 9000 // 90%
+    tvl: 9000, // 90%
+    price: 70000
   },
 };
 
@@ -110,7 +112,7 @@ async function addCollaterals(deployKeyPair: Keypair): Promise<void> {
   for (const token in COLLATERALS) {
     log(`Adding collateral ${token} (${COLLATERALS[token].tvl / 100.0} %)...`);
     await xiveProgram.methods
-      .allowCollateral(new anchor.BN(COLLATERALS[token].tvl))
+      .allowCollateral(new anchor.BN(COLLATERALS[token].tvl), new anchor.BN(COLLATERALS[token].price))
       .accounts({
         admin: deployKeyPair.publicKey,
         collateralMint: new PublicKey(COLLATERALS[token].mint),

@@ -29,7 +29,7 @@ pub struct AllowCollateral<'info> {
     pub system_program: Program<'info, System>,
 }
 
-pub fn handler(ctx: Context<AllowCollateral>, ltv: u64) -> Result<()> {
+pub fn handler(ctx: Context<AllowCollateral>, ltv: u64, price: u64) -> Result<()> {
     let collateral = &mut ctx.accounts.collateral;
 
     collateral.mint = ctx.accounts.collateral_mint.key();
@@ -38,8 +38,8 @@ pub fn handler(ctx: Context<AllowCollateral>, ltv: u64) -> Result<()> {
     collateral.allowed = true;
     collateral.ltv = ltv;
 
-    collateral.price = 0;
-    collateral.price_date = 0;
+    collateral.price = price;
+    collateral.price_date = Clock::get()?.unix_timestamp;
 
     msg!("Collateral allowed: {}", collateral.mint);
     Ok(())

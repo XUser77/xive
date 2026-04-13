@@ -15,3 +15,8 @@ pub const PEG_KEEPER_SEED: &str = "peg-keeper";
 #[constant]
 pub const COLLATERAL_SEED: &str = "collateral";
 
+#[constant]
+pub const USER_COUNTER_SEED: &str = "user-counter";
+
+pub const POSITION_SEED: &str = "position";
+

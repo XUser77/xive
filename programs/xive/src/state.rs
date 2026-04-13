@@ -20,3 +20,20 @@ pub struct Collateral {
     pub price: u64,
     pub price_date: i64,
 }
+
+#[account]
+#[derive(InitSpace)]
+pub struct UserCounter {
+    pub bump: u8,
+    pub counter: u64
+}
+
+#[account]
+#[derive(InitSpace)]
+pub struct Position {
+    pub bump: u8,
+    pub user: Pubkey,
+    pub collateral_mint: Pubkey,
+    pub collateral_amount: u64,
+    pub loan_amount: u64,
+}

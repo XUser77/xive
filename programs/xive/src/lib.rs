@@ -19,8 +19,8 @@ pub mod xive {
         initialize::handler(ctx)
     }
 
-    pub fn allow_collateral(ctx: Context<AllowCollateral>, ltv: u64) -> Result<()> {
-        allow_collateral::handler(ctx, ltv)
+    pub fn allow_collateral(ctx: Context<AllowCollateral>, ltv: u64, price: u64) -> Result<()> {
+        allow_collateral::handler(ctx, ltv, price)
     }
 
     pub fn disallow_collateral(ctx: Context<DisallowCollateral>) -> Result<()> {
