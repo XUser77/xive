@@ -1,13 +1,14 @@
 use anchor_lang::prelude::*;
 use anchor_spl::associated_token::AssociatedToken;
-use anchor_spl::token::{self, Token, TokenAccount, Transfer};
+use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
+use peg_keeper::{PegKeeper, XUSD_MINT};
 
 use crate::error::ErrorCode;
 use crate::{Collateral, Position, UserCounter, Xive};
 use crate::{COLLATERAL_SEED, PEG_KEEPER_PROGRAM_ID, PEG_KEEPER_SEED, POSITION_SEED, USER_COUNTER_SEED, XIVE_SEED};
 
 #[derive(Accounts)]
-pub struct Lend<'info> {
+pub struct OpenPosition<'info> {
     #[account(mut)]
     pub user: Signer<'info>,
 
@@ -15,7 +16,7 @@ pub struct Lend<'info> {
         seeds = [XIVE_SEED.as_bytes()],
         bump = xive.bump,
     )]
-    pub xive: Account<'info, Xive>,
+    pub xive: Box<Account<'info, Xive>>,
 
     #[account(
         seeds = [COLLATERAL_SEED.as_bytes(), collateral_mint.key().as_ref()],
@@ -23,17 +24,17 @@ pub struct Lend<'info> {
         constraint = collateral.allowed @ ErrorCode::CollateralNotAllowed,
         constraint = collateral.price > 0 @ ErrorCode::ZeroPrice,
     )]
-    pub collateral: Account<'info, Collateral>,
+    pub collateral: Box<Account<'info, Collateral>>,
 
-    /// CHECK: only used as address for ATA derivation and position record
-    pub collateral_mint: UncheckedAccount<'info>,
+    #[account()]
+    pub collateral_mint: Box<Account<'info, Mint>>,
 
     #[account(
         mut,
         associated_token::mint = collateral_mint,
         associated_token::authority = user,
     )]
-    pub user_collateral_ata: Account<'info, TokenAccount>,
+    pub user_collateral_ata: Box<Account<'info, TokenAccount>>,
 
     #[account(
         init_if_needed,
@@ -41,7 +42,7 @@ pub struct Lend<'info> {
         associated_token::mint = collateral_mint,
         associated_token::authority = xive,
     )]
-    pub vault_collateral_ata: Account<'info, TokenAccount>,
+    pub vault_collateral_ata: Box<Account<'info, TokenAccount>>,
 
     #[account(
         init_if_needed,
@@ -49,28 +50,24 @@ pub struct Lend<'info> {
         associated_token::mint = xusd_mint,
         associated_token::authority = user,
     )]
-    pub user_xusd_ata: Account<'info, TokenAccount>,
+    pub user_xusd_ata: Box<Account<'info, TokenAccount>>,
 
-    /// CHECK: peg_keeper PDA — address derived from well-known program ID and seed
     #[account(
-        mut,
         seeds = [PEG_KEEPER_SEED.as_bytes()],
-        seeds::program = PEG_KEEPER_PROGRAM_ID.parse::<Pubkey>().unwrap(),
+        seeds::program = peg_keeper_program,
         bump,
     )]
-    pub peg_keeper: UncheckedAccount<'info>,
+    pub peg_keeper: Box<Account<'info, PegKeeper>>,
 
-    #[account(mut, address = peg_keeper::XUSD_MINT.parse::<Pubkey>().unwrap())]
-    pub xusd_mint: UncheckedAccount<'info>,
+    #[account(mut, address = XUSD_MINT)]
+    pub xusd_mint: Box<Account<'info, Mint>>,
 
     #[account(
-        init_if_needed,
-        payer = user,
-        space = 8 + UserCounter::INIT_SPACE,
+        mut,
         seeds = [USER_COUNTER_SEED.as_bytes(), user.key().as_ref()],
         bump,
     )]
-    pub user_counter: Account<'info, UserCounter>,
+    pub user_counter: Box<Account<'info, UserCounter>>,
 
     #[account(
         init,
@@ -79,14 +76,15 @@ pub struct Lend<'info> {
         seeds = [POSITION_SEED.as_bytes(), user.key().as_ref(), &user_counter.counter.to_le_bytes()],
         bump,
     )]
-    pub position: Account<'info, Position>,
+    pub position: Box<Account<'info, Position>>,
 
     pub token_program: Program<'info, Token>,
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub system_program: Program<'info, System>,
+    pub peg_keeper_program: Program<'info, peg_keeper::program::PegKeeper>,
 }
 
-pub fn handler(ctx: Context<Lend>, collateral_amount: u64, loan_amount: u64) -> Result<()> {
+pub fn handler(ctx: Context<OpenPosition>, collateral_amount: u64, loan_amount: u64) -> Result<()> {
     let collateral = &ctx.accounts.collateral;
 
     // LTV check: loan_amount <= collateral_amount * price * ltv / 100
@@ -121,7 +119,7 @@ pub fn handler(ctx: Context<Lend>, collateral_amount: u64, loan_amount: u64) -> 
 
     peg_keeper::cpi::mint_xusd(
         CpiContext::new_with_signer(
-            PEG_KEEPER_PROGRAM_ID.parse::<Pubkey>().unwrap(),
+            ctx.accounts.peg_keeper_program.key(),
             peg_keeper::cpi::accounts::MintXusd {
                 peg_keeper: ctx.accounts.peg_keeper.to_account_info(),
                 authorized_minter: ctx.accounts.xive.to_account_info(),

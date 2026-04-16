@@ -10,5 +10,7 @@ pub enum ErrorCode {
     InsufficientCollateral,
     #[msg("Collateral not allowed")]
     CollateralNotAllowed,
+    #[msg("Invalid amount")]
+    InvalidAmount,
 }
 

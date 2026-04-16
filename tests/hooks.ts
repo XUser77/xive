@@ -42,6 +42,16 @@ function log(line: string, ...args: any[]) {
   }
 }
 
+async function fundWallet(keyPair: Keypair, walletName: string) {
+
+  log(`Funding wallet ${keyPair.publicKey.toBase58()} (${walletName})...`);
+  await rpcCall("surfnet_setAccount", [
+    keyPair.publicKey,
+    { lamports: 100_000_000_000 }, // 100 SOL
+  ]);
+
+}
+
 function buildPrograms(): void {
   console.log(`  [hooks] Building programs...`);
   const result = spawnSync(
@@ -114,7 +124,7 @@ async function addCollaterals(deployKeyPair: Keypair): Promise<void> {
     await xiveProgram.methods
       .allowCollateral(new anchor.BN(COLLATERALS[token].tvl), new anchor.BN(COLLATERALS[token].price))
       .accounts({
-        admin: deployKeyPair.publicKey,
+        payer: deployKeyPair.publicKey,
         collateralMint: new PublicKey(COLLATERALS[token].mint),
       })
       .signers([deployKeyPair])
@@ -126,18 +136,14 @@ async function resetAndDeploy(): Promise<void> {
   console.log("  [hooks] Resetting network state...");
   await rpcCall("surfnet_resetNetwork");
 
-  // Fund wallets after reset (balance was cleared)
+  // Fund, build, deploy, init
   const deployKeyPair = getKeyPair(DEPLOY_WALLET);
   const testKeyPair = getKeyPair(TEST_WALLET);
-  for (const keyPair of [deployKeyPair, testKeyPair]) {
-    log(`Funding wallet ${keyPair.publicKey.toBase58()}...`);
-    await rpcCall("surfnet_setAccount", [
-      keyPair.publicKey,
-      { lamports: 100_000_000_000 }, // 100 SOL
-    ]);
-  }
 
-  // Build, deploy, init
+  await Promise.all([
+    fundWallet(deployKeyPair, "Deploy"),
+    fundWallet(testKeyPair, "Test")
+  ]);
   buildPrograms();
   deployPrograms();
   await initPrograms(deployKeyPair);

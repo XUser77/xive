@@ -20,7 +20,7 @@ pub struct Initialize<'info> {
     #[account(
         init,
         payer = payer,
-        address = XUSD_MINT.parse::<Pubkey>().unwrap(),
+        address = XUSD_MINT,
         mint::decimals = XUSD_DECIMALS,
         mint::authority = peg_keeper,
         mint::freeze_authority = peg_keeper,
@@ -37,7 +37,7 @@ pub fn handler(ctx: Context<Initialize>) -> Result<()> {
     let xusd_mint_key = ctx.accounts.xusd_mint.key();
 
     let peg_keeper = &mut ctx.accounts.peg_keeper;
-    let xive_program_id = XIVE_PROGRAM_ID.parse::<Pubkey>().unwrap();
+    let xive_program_id = XIVE_PROGRAM_ID;
     let (xive_pda, _) = Pubkey::find_program_address(&[XIVE_SEED.as_bytes()], &xive_program_id);
 
     peg_keeper.admin = ctx.accounts.payer.key();

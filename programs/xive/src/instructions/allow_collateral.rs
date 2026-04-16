@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use anchor_lang::solana_program::bpf_loader_upgradeable;
 
 use crate::{Collateral, COLLATERAL_SEED};
 
@@ -11,6 +12,9 @@ pub struct AllowCollateral<'info> {
     pub program: Program<'info, crate::program::Xive>,
 
     #[account(
+        seeds = [crate::ID.as_ref()],
+        seeds::program = bpf_loader_upgradeable::ID,
+        bump,
         constraint = program_data.upgrade_authority_address == Some(payer.key()),
     )]
     pub program_data: Account<'info, ProgramData>,

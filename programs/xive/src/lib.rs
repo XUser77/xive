@@ -31,7 +31,27 @@ pub mod xive {
         set_price::handler(ctx, price)
     }
 
-    pub fn lend(ctx: Context<Lend>, collateral_amount: u64, loan_amount: u64) -> Result<()> {
-        lend::handler(ctx, collateral_amount, loan_amount)
+    pub fn open_position(ctx: Context<OpenPosition>, collateral_amount: u64, loan_amount: u64) -> Result<()> {
+        open_position::handler(ctx, collateral_amount, loan_amount)
+    }
+
+    pub fn deposit_collateral(ctx: Context<DepositCollateral>, amount: u64) -> Result<()> {
+        deposit_collateral::handler(ctx, amount)
+    }
+
+    pub fn withdraw_collateral(ctx: Context<WithdrawCollateral>, amount: u64) -> Result<()> {
+        withdraw_collateral::handler(ctx, amount)
+    }
+
+    pub fn borrow(ctx: Context<Borrow>, amount: u64) -> Result<()> {
+        borrow::handler(ctx, amount)
+    }
+
+    pub fn repay(ctx: Context<Repay>, amount: u64) -> Result<()> {
+        repay::handler(ctx, amount)
+    }
+
+    pub fn create_user_state(ctx: Context<CreateUserState>) -> Result<()> {
+        create_user_state::handler()
     }
 }
