@@ -13,6 +13,7 @@ pub struct Collateral {
     pub bump: u8,
 
     pub ltv: u64,
+    pub liquidation_ltv: u64,
     pub allowed: bool,
 
     pub price: u64,
