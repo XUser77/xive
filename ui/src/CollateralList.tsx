@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useState } from "react";
-import { useConnection } from "@solana/wallet-adapter-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 
 import { fetchCollaterals, type Collateral } from "./collateral";
 import { KNOWN_MINTS } from "./config";
+import { OpenPositionModal } from "./OpenPositionModal";
 
 function shorten(pk: string, n = 4): string {
   return `${pk.slice(0, n)}…${pk.slice(-n)}`;
@@ -28,11 +29,17 @@ function mintLabel(mint: string): string {
   return KNOWN_MINTS[mint]?.symbol ?? shorten(mint);
 }
 
-export function CollateralList() {
+export function CollateralList({
+  onPositionOpened,
+}: {
+  onPositionOpened?: () => void;
+} = {}) {
   const { connection } = useConnection();
+  const { publicKey } = useWallet();
   const [items, setItems] = useState<Collateral[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [opening, setOpening] = useState<Collateral | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -50,6 +57,8 @@ export function CollateralList() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  const showAction = useMemo(() => Boolean(publicKey), [publicKey]);
 
   return (
     <section>
@@ -79,6 +88,7 @@ export function CollateralList() {
               <th>Price</th>
               <th>Status</th>
               <th>Updated</th>
+              {showAction && <th></th>}
             </tr>
           </thead>
           <tbody>
@@ -101,6 +111,17 @@ export function CollateralList() {
                     </span>
                   </td>
                   <td className="muted">{formatDate(c.priceDate)}</td>
+                  {showAction && (
+                    <td>
+                      <button
+                        className="refresh primary"
+                        disabled={!c.allowed}
+                        onClick={() => setOpening(c)}
+                      >
+                        Open position
+                      </button>
+                    </td>
+                  )}
                 </tr>
               );
             })}
@@ -109,6 +130,20 @@ export function CollateralList() {
       )}
 
       {!items && !error && <div className="loading">Fetching accounts…</div>}
+
+      {!publicKey && items && items.length > 0 && (
+        <p className="muted" style={{ marginTop: 12, fontSize: 13 }}>
+          Connect a wallet to open a position against a collateral.
+        </p>
+      )}
+
+      {opening && (
+        <OpenPositionModal
+          collateral={opening}
+          onClose={() => setOpening(null)}
+          onOpened={onPositionOpened}
+        />
+      )}
     </section>
   );
 }

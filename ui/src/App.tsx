@@ -2,7 +2,7 @@ import { useState } from "react";
 
 import { WalletProviders } from "./WalletProviders";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
-import { CollateralList } from "./CollateralList";
+import { MainTab } from "./MainTab";
 import { Cheats } from "./Cheats";
 import { RPC_ENDPOINT } from "./config";
 
@@ -39,7 +39,7 @@ export default function App() {
           </button>
         </nav>
 
-        {tab === "main" ? <CollateralList /> : <Cheats />}
+        {tab === "main" ? <MainTab /> : <Cheats />}
       </div>
     </WalletProviders>
   );
