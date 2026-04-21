@@ -35,7 +35,6 @@ pub struct Initialize<'info> {
 pub fn handler(ctx: Context<Initialize>) -> Result<()> {
     ctx.accounts.vault.bump = ctx.bumps.vault;
     ctx.accounts.vault.lp_vault_mint = ctx.accounts.lp_vault_mint.key();
-    ctx.accounts.vault.lp_vault_mint_bump = 0;
     msg!("Vault singleton initialized");
     msg!("LP vault mint: {}", ctx.accounts.lp_vault_mint.key());
     Ok(())

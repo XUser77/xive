@@ -5,5 +5,4 @@ use anchor_lang::prelude::*;
 pub struct Vault {
     pub bump: u8,
     pub lp_vault_mint: Pubkey,
-    pub lp_vault_mint_bump: u8,
 }
