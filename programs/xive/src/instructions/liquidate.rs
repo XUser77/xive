@@ -88,7 +88,7 @@ pub fn handler(ctx: Context<Liquidate>) -> Result<()> {
 
     token::transfer(
         CpiContext::new(
-            ctx.accounts.token_program.to_account_info(),
+            ctx.accounts.token_program.to_account_info().key(),
             Transfer {
                 from: ctx.accounts.caller_xusd_ata.to_account_info(),
                 to: ctx.accounts.xive_xusd_ata.to_account_info(),
@@ -104,7 +104,7 @@ pub fn handler(ctx: Context<Liquidate>) -> Result<()> {
 
     token::burn(
         CpiContext::new_with_signer(
-            ctx.accounts.token_program.to_account_info(),
+            ctx.accounts.token_program.to_account_info().key(),
             Burn {
                 mint: ctx.accounts.xusd_mint.to_account_info(),
                 from: ctx.accounts.xive_xusd_ata.to_account_info(),
@@ -117,7 +117,7 @@ pub fn handler(ctx: Context<Liquidate>) -> Result<()> {
 
     token::transfer(
         CpiContext::new_with_signer(
-            ctx.accounts.token_program.to_account_info(),
+            ctx.accounts.token_program.to_account_info().key(),
             Transfer {
                 from: ctx.accounts.vault_collateral_ata.to_account_info(),
                 to: ctx.accounts.caller_collateral_ata.to_account_info(),

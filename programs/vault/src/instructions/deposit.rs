@@ -71,7 +71,7 @@ pub fn handler(ctx: Context<Deposit>, amount: u64) -> Result<()> {
 
     token::transfer(
         CpiContext::new(
-            ctx.accounts.token_program.to_account_info(),
+            ctx.accounts.token_program.to_account_info().key(),
             Transfer {
                 from: ctx.accounts.user_xusd_ata.to_account_info(),
                 to: ctx.accounts.vault_xusd_ata.to_account_info(),
@@ -87,7 +87,7 @@ pub fn handler(ctx: Context<Deposit>, amount: u64) -> Result<()> {
 
     token::mint_to(
         CpiContext::new_with_signer(
-            ctx.accounts.token_program.to_account_info(),
+            ctx.accounts.token_program.to_account_info().key(),
             MintTo {
                 mint: ctx.accounts.lp_vault_mint.to_account_info(),
                 to: ctx.accounts.user_lp_vault_ata.to_account_info(),

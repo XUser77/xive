@@ -9,6 +9,7 @@ import * as anchor from "@anchor-lang/core";
 import {Program} from "@anchor-lang/core";
 import type { PegKeeper } from "../target/types/peg_keeper.ts";
 import type { Xive } from "../target/types/xive.ts";
+import type { Vault } from "../target/types/vault.js";
 import { PROJECT_ROOT, RPC_URL, pubKey, rpcCall, isRpcUp, poll, getKeyPair } from "./utils.js";
 
 const DEPLOY_WALLET = path.join(PROJECT_ROOT, "keys/deploy-wallet.json");
@@ -18,21 +19,25 @@ const COLLATERALS = {
   WETH: {
     mint: '7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs',
     tvl: 9000, // 90%
+    liqTvl: 9500, // 95%
     price: 3000,
   },
   WBTC: {
     mint: '5XZw2LKTyrfvfiskJ78AMpackRjPcyCif1WhUsPDuVqQ',
     tvl: 9000, // 90%
+    liqTvl: 9500, // 95%
     price: 70000
   },
 };
 
 const PROGRAMS: { name: string; so: string; keypair: string }[] = [
   { name: "peg_keeper", so: "target/deploy/peg_keeper.so", keypair: "keys/peg-keeper-program.json" },
+  { name: "vault",      so: "target/deploy/vault.so",      keypair: "keys/vault-program.json" },
   { name: "xive",       so: "target/deploy/xive.so",       keypair: "keys/xive-program.json" },
 ];
 
 const XUSD_MINT_KEY_PAIR = "keys/xusd-mint-keypair.json";
+const VAULT_LP_MINT_KEY_PAIR = "keys/vault-mint-keypair.json";
 
 function log(line: string, ...args: any[]) {
   if (args.length == 0) {
@@ -102,19 +107,32 @@ async function initPrograms(deployKeyPair: Keypair): Promise<void> {
   log("Xive initialized");
 
   log("Initializing peg_keeper...");
-  // Peg Keeper
   const pegKeeperProgram = anchor.workspace.pegKeeper as Program<PegKeeper>;
-  const mintAccountKeypair = getKeyPair(XUSD_MINT_KEY_PAIR);
+  const xusdMintAccountKeypair = getKeyPair(XUSD_MINT_KEY_PAIR);
   await pegKeeperProgram.methods
     .initialize()
     .accounts({
       payer: deployKeyPair.publicKey,
-      xusdMint: mintAccountKeypair.publicKey
+      xusdMint: xusdMintAccountKeypair.publicKey
     })
-    .signers([deployKeyPair, mintAccountKeypair])
+    .signers([deployKeyPair, xusdMintAccountKeypair])
     .rpc();
   log("Peg keeper initialized");
-  log(`XUSD address: ${mintAccountKeypair.publicKey.toBase58()}`);
+  log(`XUSD address: ${xusdMintAccountKeypair.publicKey.toBase58()}`);
+
+  log("Initializing vault...");
+  const vaultProgram = anchor.workspace.vault as Program<Vault>;
+  const vaultMintAccountKeyPair = getKeyPair(VAULT_LP_MINT_KEY_PAIR);
+  await vaultProgram.methods
+    .initialize()
+    .accounts({
+      payer: deployKeyPair.publicKey,
+      lpVaultMint: vaultMintAccountKeyPair.publicKey
+    })
+    .signers([deployKeyPair, vaultMintAccountKeyPair])
+    .rpc();
+  log("Vault initialized");
+  log(`VaultLP address: ${vaultMintAccountKeyPair.publicKey.toBase58()}`);
 }
 
 async function addCollaterals(deployKeyPair: Keypair): Promise<void> {
@@ -122,7 +140,11 @@ async function addCollaterals(deployKeyPair: Keypair): Promise<void> {
   for (const token in COLLATERALS) {
     log(`Adding collateral ${token} (${COLLATERALS[token].tvl / 100.0} %)...`);
     await xiveProgram.methods
-      .allowCollateral(new anchor.BN(COLLATERALS[token].tvl), new anchor.BN(COLLATERALS[token].price))
+      .allowCollateral(
+        new anchor.BN(COLLATERALS[token].tvl),
+        new anchor.BN(COLLATERALS[token].liqTvl),
+        new anchor.BN(COLLATERALS[token].price)
+      )
       .accounts({
         payer: deployKeyPair.publicKey,
         collateralMint: new PublicKey(COLLATERALS[token].mint),
