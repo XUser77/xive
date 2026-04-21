@@ -4,4 +4,6 @@ use anchor_lang::prelude::*;
 pub enum ErrorCode {
     #[msg("Unauthorized")]
     Unauthorized,
+    #[msg("Invalid amount")]
+    InvalidAmount,
 }
