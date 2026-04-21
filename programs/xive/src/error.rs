@@ -12,5 +12,7 @@ pub enum ErrorCode {
     CollateralNotAllowed,
     #[msg("Invalid amount")]
     InvalidAmount,
+    #[msg("Position is healthy and cannot be liquidated")]
+    PositionHealthy,
 }
 

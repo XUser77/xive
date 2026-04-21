@@ -51,6 +51,10 @@ pub mod xive {
         repay::handler(ctx, amount)
     }
 
+    pub fn liquidate(ctx: Context<Liquidate>) -> Result<()> {
+        liquidate::handler(ctx)
+    }
+
     pub fn create_user_state(ctx: Context<CreateUserState>) -> Result<()> {
         create_user_state::handler()
     }
