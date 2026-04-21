@@ -9,8 +9,7 @@ function shorten(pk: string, n = 4): string {
 }
 
 function formatBps(bps: bigint): string {
-  const pct = Number(bps) / 100;
-  return `${pct.toFixed(2)}%`;
+  return `${(Number(bps) / 100).toFixed(2)}%`;
 }
 
 function formatPrice(price: bigint, mint: string): string {
@@ -39,8 +38,7 @@ export function CollateralList() {
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchCollaterals(connection);
-      setItems(data);
+      setItems(await fetchCollaterals(connection));
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
       setItems(null);
@@ -55,14 +53,7 @@ export function CollateralList() {
 
   return (
     <section>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: 12,
-        }}
-      >
+      <div className="section-header">
         <h2 className="section-title" style={{ margin: 0 }}>
           Allowed collaterals
         </h2>
