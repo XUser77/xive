@@ -6,13 +6,13 @@ use crate::{Collateral, COLLATERAL_SEED};
 pub struct SetPrice<'info> {
     pub payer: Signer<'info>,
 
-    #[account(constraint = program.programdata_address()? == Some(program_data.key()))]
-    pub program: Program<'info, crate::program::Xive>,
-
-    #[account(
-        constraint = program_data.upgrade_authority_address == Some(payer.key()),
-    )]
-    pub program_data: Account<'info, ProgramData>,
+    // #[account(constraint = program.programdata_address()? == Some(program_data.key()))]
+    // pub program: Program<'info, crate::program::Xive>,
+    //
+    // #[account(
+    //     constraint = program_data.upgrade_authority_address == Some(payer.key()),
+    // )]
+    // pub program_data: Account<'info, ProgramData>,
 
     #[account(
         mut,

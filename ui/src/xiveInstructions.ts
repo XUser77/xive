@@ -19,7 +19,6 @@ import {
   positionPda,
   userCounterPda,
   xivePda,
-  xiveProgramDataPda,
 } from "./pdas";
 
 const DISCRIMINATOR_CREATE_USER_STATE = new Uint8Array([
@@ -84,8 +83,6 @@ export function setPriceIx(args: {
     programId: XIVE_PROGRAM_ID,
     keys: [
       { pubkey: payer, isSigner: true, isWritable: false },
-      { pubkey: XIVE_PROGRAM_ID, isSigner: false, isWritable: false },
-      { pubkey: xiveProgramDataPda(), isSigner: false, isWritable: false },
       { pubkey: collateralPda(collateralMint), isSigner: false, isWritable: true },
     ],
     data,
