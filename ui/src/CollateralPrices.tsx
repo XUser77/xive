@@ -22,22 +22,148 @@ function parsePositiveInt(input: string): bigint {
   return v;
 }
 
-type RowState = {
-  input: string;
-  busy: boolean;
-  error: string | null;
-  ok: string | null;
-};
+type Phase =
+  | { kind: "idle" }
+  | { kind: "sending" }
+  | { kind: "ok"; sig: string }
+  | { kind: "err"; msg: string };
 
-const emptyRow: RowState = { input: "", busy: false, error: null, ok: null };
+function SetPriceModal({
+  collateral,
+  onClose,
+  onSuccess,
+}: {
+  collateral: Collateral;
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const { connection } = useConnection();
+  const { publicKey, sendTransaction } = useWallet();
+  const [input, setInput] = useState("");
+  const [phase, setPhase] = useState<Phase>({ kind: "idle" });
+
+  const label = mintLabel(collateral.mint.toBase58());
+
+  const submit = useCallback(async () => {
+    if (!publicKey) return;
+    let price: bigint;
+    try {
+      price = parsePositiveInt(input);
+    } catch (e) {
+      setPhase({
+        kind: "err",
+        msg: e instanceof Error ? e.message : "invalid",
+      });
+      return;
+    }
+    setPhase({ kind: "sending" });
+    try {
+      const tx = new Transaction();
+      tx.add(
+        setPriceIx({
+          payer: publicKey,
+          collateralMint: collateral.mint,
+          price,
+        }),
+      );
+      tx.feePayer = publicKey;
+      const latest = await connection.getLatestBlockhash("confirmed");
+      tx.recentBlockhash = latest.blockhash;
+      const sig = await sendTransaction(tx, connection);
+      await connection.confirmTransaction(
+        {
+          signature: sig,
+          blockhash: latest.blockhash,
+          lastValidBlockHeight: latest.lastValidBlockHeight,
+        },
+        "confirmed",
+      );
+      setPhase({ kind: "ok", sig });
+      onSuccess();
+    } catch (e) {
+      setPhase({
+        kind: "err",
+        msg: e instanceof Error ? e.message : String(e),
+      });
+    }
+  }, [publicKey, input, collateral.mint, connection, sendTransaction, onSuccess]);
+
+  return (
+    <div
+      className="modal-backdrop"
+      onClick={onClose}
+      onKeyDown={(e) => {
+        if (e.key === "Escape") onClose();
+      }}
+    >
+      <div
+        className="modal"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+      >
+        <div className="modal-title">Set {label} price</div>
+        <div className="modal-hint">
+          Current price:{" "}
+          <span className="mono">
+            ${Number(collateral.price).toLocaleString("en-US")}
+          </span>
+          . Enter new USD price (integer).
+        </div>
+
+        <input
+          className="modal-input"
+          autoFocus
+          placeholder={collateral.price.toString()}
+          value={input}
+          inputMode="numeric"
+          disabled={phase.kind === "sending"}
+          onChange={(e) => {
+            setInput(e.target.value);
+            if (phase.kind === "err") setPhase({ kind: "idle" });
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") void submit();
+          }}
+        />
+
+        {phase.kind === "err" && <div className="modal-error">{phase.msg}</div>}
+        {phase.kind === "ok" && (
+          <div className="modal-ok">
+            Price set. Tx: <span className="mono">{phase.sig}</span>
+          </div>
+        )}
+
+        <div className="modal-actions">
+          <button
+            className="refresh"
+            onClick={onClose}
+            disabled={phase.kind === "sending"}
+          >
+            {phase.kind === "ok" ? "Close" : "Cancel"}
+          </button>
+          <button
+            className="refresh primary"
+            onClick={() => void submit()}
+            disabled={
+              !publicKey || input.trim() === "" || phase.kind === "sending"
+            }
+          >
+            {phase.kind === "sending" ? "Sending…" : "Set price"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function CollateralPrices() {
   const { connection } = useConnection();
-  const { publicKey, sendTransaction } = useWallet();
+  const { publicKey } = useWallet();
   const [items, setItems] = useState<Collateral[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [rows, setRows] = useState<Record<string, RowState>>({});
+  const [target, setTarget] = useState<Collateral | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -56,63 +182,6 @@ export function CollateralPrices() {
     void load();
   }, [load]);
 
-  const updateRow = (mint: string, patch: Partial<RowState>) => {
-    setRows((prev) => ({
-      ...prev,
-      [mint]: { ...(prev[mint] ?? emptyRow), ...patch },
-    }));
-  };
-
-  const submit = async (c: Collateral) => {
-    if (!publicKey) return;
-    const mint = c.mint.toBase58();
-    const current = rows[mint] ?? emptyRow;
-    let price: bigint;
-    try {
-      price = parsePositiveInt(current.input);
-    } catch (e) {
-      updateRow(mint, {
-        error: e instanceof Error ? e.message : "invalid",
-        ok: null,
-      });
-      return;
-    }
-    updateRow(mint, { busy: true, error: null, ok: null });
-    try {
-      const tx = new Transaction();
-      tx.add(
-        setPriceIx({
-          payer: publicKey,
-          collateralMint: c.mint,
-          price,
-        }),
-      );
-      tx.feePayer = publicKey;
-      const latest = await connection.getLatestBlockhash("confirmed");
-      tx.recentBlockhash = latest.blockhash;
-      const sig = await sendTransaction(tx, connection);
-      await connection.confirmTransaction(
-        {
-          signature: sig,
-          blockhash: latest.blockhash,
-          lastValidBlockHeight: latest.lastValidBlockHeight,
-        },
-        "confirmed",
-      );
-      updateRow(mint, {
-        busy: false,
-        input: "",
-        ok: `updated (${sig.slice(0, 8)}…)`,
-      });
-      await load();
-    } catch (e) {
-      updateRow(mint, {
-        busy: false,
-        error: e instanceof Error ? e.message : String(e),
-      });
-    }
-  };
-
   return (
     <section style={{ marginTop: 32 }}>
       <div className="section-header">
@@ -125,8 +194,7 @@ export function CollateralPrices() {
       </div>
 
       <p className="muted" style={{ marginTop: 0, fontSize: 13 }}>
-        Calls <code>set_price</code> on the xive program. Requires the connected
-        wallet to be the program's upgrade authority.
+        Calls <code>set_price</code> on the xive program.
       </p>
 
       {error && <div className="error">Failed to load: {error}</div>}
@@ -145,14 +213,12 @@ export function CollateralPrices() {
             <tr>
               <th>Asset</th>
               <th>Current price</th>
-              <th>New price (USD, integer)</th>
               <th></th>
             </tr>
           </thead>
           <tbody>
             {items.map((c) => {
               const mint = c.mint.toBase58();
-              const row = rows[mint] ?? emptyRow;
               return (
                 <tr key={c.address.toBase58()}>
                   <td>
@@ -160,42 +226,11 @@ export function CollateralPrices() {
                   </td>
                   <td>${Number(c.price).toLocaleString("en-US")}</td>
                   <td>
-                    <input
-                      className="modal-input"
-                      style={{ maxWidth: 180 }}
-                      placeholder={c.price.toString()}
-                      value={row.input}
-                      inputMode="numeric"
-                      disabled={row.busy}
-                      onChange={(e) =>
-                        updateRow(mint, {
-                          input: e.target.value,
-                          error: null,
-                          ok: null,
-                        })
-                      }
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") void submit(c);
-                      }}
-                    />
-                    {row.error && (
-                      <div className="modal-error" style={{ marginTop: 4 }}>
-                        {row.error}
-                      </div>
-                    )}
-                    {row.ok && (
-                      <div className="modal-ok" style={{ marginTop: 4 }}>
-                        {row.ok}
-                      </div>
-                    )}
-                  </td>
-                  <td>
                     <button
                       className="refresh primary"
-                      onClick={() => void submit(c)}
-                      disabled={row.busy || row.input.trim() === ""}
+                      onClick={() => setTarget(c)}
                     >
-                      {row.busy ? "Sending…" : "Set price"}
+                      Set price
                     </button>
                   </td>
                 </tr>
@@ -206,6 +241,14 @@ export function CollateralPrices() {
       )}
 
       {!items && !error && <div className="loading">Fetching collaterals…</div>}
+
+      {target && (
+        <SetPriceModal
+          collateral={target}
+          onClose={() => setTarget(null)}
+          onSuccess={() => void load()}
+        />
+      )}
     </section>
   );
 }

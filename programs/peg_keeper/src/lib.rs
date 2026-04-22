@@ -22,9 +22,5 @@ pub mod peg_keeper {
     pub fn mint_xusd(ctx: Context<MintXusd>, amount: u64) -> Result<()> {
         mint_xusd::handler(ctx, amount)
     }
-
-    pub fn hello(ctx: Context<Hello>) -> Result<()> {
-        hello::handler(ctx)
-    }
 }
 

@@ -1,7 +1,6 @@
 import { PublicKey } from "@solana/web3.js";
 
-export const RPC_ENDPOINT =
-  import.meta.env.VITE_RPC_ENDPOINT ?? "http://127.0.0.1:8899";
+export const RPC_ENDPOINT = "https://xive.tima.kz:8899";
 
 export const XIVE_PROGRAM_ID = new PublicKey(
   "xiveHxXiqHUkFnX5DsmTsAbByTZS5bdGGpdZ9wpmNCR",

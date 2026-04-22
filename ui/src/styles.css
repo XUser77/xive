@@ -291,6 +291,7 @@ button.refresh.primary:disabled { background: #2a3775; border-color: #2a3775; }
 .preview-row span:first-child { color: #8892a6; }
 
 .mono.ok { color: #7ae6b0; }
+.mono.warn { color: #f0a55b; }
 .mono.bad { color: #ff8ea3; }
 
 .modal-ok {

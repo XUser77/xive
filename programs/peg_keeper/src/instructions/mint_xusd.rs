@@ -13,8 +13,6 @@ pub struct MintXusd<'info> {
     )]
     pub peg_keeper: Account<'info, PegKeeper>,
 
-    pub authorized_minter: Signer<'info>,
-
     #[account(mut)]
     pub xusd_mint: Account<'info, Mint>,
 

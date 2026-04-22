@@ -122,7 +122,6 @@ pub fn handler(ctx: Context<OpenPosition>, collateral_amount: u64, loan_amount: 
             ctx.accounts.peg_keeper_program.key(),
             peg_keeper::cpi::accounts::MintXusd {
                 peg_keeper: ctx.accounts.peg_keeper.to_account_info(),
-                authorized_minter: ctx.accounts.xive.to_account_info(),
                 xusd_mint: ctx.accounts.xusd_mint.to_account_info(),
                 recipient_token_account: ctx.accounts.user_xusd_ata.to_account_info(),
                 xive: ctx.accounts.xive.to_account_info(),

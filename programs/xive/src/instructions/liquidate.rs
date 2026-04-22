@@ -37,14 +37,6 @@ pub struct Liquidate<'info> {
     )]
     pub caller_xusd_ata: Account<'info, TokenAccount>,
 
-    #[account(
-        init_if_needed,
-        payer = caller,
-        associated_token::mint = xusd_mint,
-        associated_token::authority = xive,
-    )]
-    pub xive_xusd_ata: Account<'info, TokenAccount>,
-
     /// CHECK: only used as address for ATA derivation; validated via position.collateral_mint
     #[account(address = position.collateral_mint)]
     pub collateral_mint: UncheckedAccount<'info>,
@@ -64,8 +56,6 @@ pub struct Liquidate<'info> {
     pub vault_collateral_ata: Account<'info, TokenAccount>,
 
     pub token_program: Program<'info, Token>,
-    pub associated_token_program: Program<'info, anchor_spl::associated_token::AssociatedToken>,
-    pub system_program: Program<'info, System>,
 }
 
 pub fn handler(ctx: Context<Liquidate>) -> Result<()> {
@@ -86,12 +76,12 @@ pub fn handler(ctx: Context<Liquidate>) -> Result<()> {
         .unwrap();
     require!(debt as u128 >= liquidation_tvl, ErrorCode::PositionHealthy);
 
-    token::transfer(
+    token::burn(
         CpiContext::new(
             ctx.accounts.token_program.to_account_info().key(),
-            Transfer {
+            Burn {
+                mint: ctx.accounts.xusd_mint.to_account_info(),
                 from: ctx.accounts.caller_xusd_ata.to_account_info(),
-                to: ctx.accounts.xive_xusd_ata.to_account_info(),
                 authority: ctx.accounts.caller.to_account_info(),
             },
         ),
@@ -101,19 +91,6 @@ pub fn handler(ctx: Context<Liquidate>) -> Result<()> {
     let bump = ctx.accounts.xive.bump;
     let seeds = &[XIVE_SEED.as_bytes(), &[bump]];
     let signer_seeds = &[&seeds[..]];
-
-    token::burn(
-        CpiContext::new_with_signer(
-            ctx.accounts.token_program.to_account_info().key(),
-            Burn {
-                mint: ctx.accounts.xusd_mint.to_account_info(),
-                from: ctx.accounts.xive_xusd_ata.to_account_info(),
-                authority: ctx.accounts.xive.to_account_info(),
-            },
-            signer_seeds,
-        ),
-        debt,
-    )?;
 
     token::transfer(
         CpiContext::new_with_signer(
@@ -132,7 +109,7 @@ pub fn handler(ctx: Context<Liquidate>) -> Result<()> {
     position.collateral_amount = 0;
 
     msg!(
-        "Position liquidated: repaid {} XUSD, transferred {} collateral",
+        "Position liquidated: burned {} XUSD, transferred {} collateral",
         debt,
         collateral_amount
     );

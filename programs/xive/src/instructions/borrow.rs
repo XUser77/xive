@@ -75,7 +75,6 @@ pub fn handler(ctx: Context<Borrow>, amount: u64) -> Result<()> {
             PEG_KEEPER_PROGRAM_ID,
             peg_keeper::cpi::accounts::MintXusd {
                 peg_keeper: ctx.accounts.peg_keeper.to_account_info(),
-                authorized_minter: ctx.accounts.xive.to_account_info(),
                 xusd_mint: ctx.accounts.xusd_mint.to_account_info(),
                 recipient_token_account: ctx.accounts.user_xusd_ata.to_account_info(),
                 xive: ctx.accounts.xive.to_account_info(),

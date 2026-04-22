@@ -4,6 +4,10 @@ import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { fetchUserPositions, type Position } from "./positions";
 import { fetchCollaterals, type Collateral } from "./collateral";
 import { KNOWN_MINTS, XUSD_DECIMALS } from "./config";
+import {
+  PositionActionModal,
+  type PositionAction,
+} from "./PositionActionModal";
 
 function shorten(pk: string, n = 4): string {
   return `${pk.slice(0, n)}…${pk.slice(-n)}`;
@@ -25,14 +29,18 @@ function mintMeta(mint: string) {
   return KNOWN_MINTS[mint] ?? { symbol: shorten(mint), decimals: 0 };
 }
 
-const POSITION_ACTIONS = [
-  "Repay debt",
-  "Borrow more",
-  "Deposit collateral",
-  "Withdraw collateral",
-] as const;
+const POSITION_ACTIONS: { action: PositionAction; label: string }[] = [
+  { action: "repay", label: "Repay debt" },
+  { action: "borrow", label: "Borrow more" },
+  { action: "deposit_collateral", label: "Deposit collateral" },
+  { action: "withdraw_collateral", label: "Withdraw collateral" },
+];
 
-function ActionsMenu() {
+function ActionsMenu({
+  onPick,
+}: {
+  onPick: (action: PositionAction) => void;
+}) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -66,12 +74,15 @@ function ActionsMenu() {
       </button>
       {open && (
         <div className="dropdown-menu" role="menu">
-          {POSITION_ACTIONS.map((label) => (
+          {POSITION_ACTIONS.map(({ action, label }) => (
             <button
-              key={label}
+              key={action}
               className="dropdown-item"
               role="menuitem"
-              onClick={() => setOpen(false)}
+              onClick={() => {
+                setOpen(false);
+                onPick(action);
+              }}
             >
               {label}
             </button>
@@ -89,6 +100,9 @@ export function Positions({ refreshKey }: { refreshKey: number }) {
   const [collaterals, setCollaterals] = useState<Map<string, Collateral>>(new Map());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [modal, setModal] = useState<
+    { action: PositionAction; position: Position } | null
+  >(null);
 
   const load = useCallback(async () => {
     if (!publicKey) {
@@ -125,7 +139,7 @@ export function Positions({ refreshKey }: { refreshKey: number }) {
       const meta = mintMeta(mint);
       const col = collaterals.get(mint);
       let ltvPct: number | null = null;
-      let overLiq = false;
+      let ltvTone: "ok" | "warn" | "bad" = "ok";
       if (col && col.price > 0n) {
         const scaledRaw = p.collateralAmount * col.price;
         const expDiff = meta.decimals - XUSD_DECIMALS;
@@ -136,14 +150,17 @@ export function Positions({ refreshKey }: { refreshKey: number }) {
         if (valueXusd > 0n) {
           const bps = Number((p.loanAmount * 10000n) / valueXusd);
           ltvPct = bps / 100;
-          overLiq = p.loanAmount * 10000n > valueXusd * col.liquidationLtv;
+          const scaled = p.loanAmount * 10000n;
+          if (scaled >= valueXusd * col.liquidationLtv) ltvTone = "bad";
+          else if (scaled >= valueXusd * col.ltv) ltvTone = "warn";
+          else ltvTone = "ok";
         }
       }
       return {
         p,
         meta,
         ltvPct,
-        overLiq,
+        ltvTone,
         liquidationLtvPct: col ? Number(col.liquidationLtv) / 100 : null,
       };
     });
@@ -181,7 +198,7 @@ export function Positions({ refreshKey }: { refreshKey: number }) {
             </tr>
           </thead>
           <tbody>
-            {rows.map(({ p, meta, ltvPct, overLiq, liquidationLtvPct }) => (
+            {rows.map(({ p, meta, ltvPct, ltvTone, liquidationLtvPct }) => (
               <tr key={p.address.toBase58()}>
                 <td
                   className="mono"
@@ -200,7 +217,7 @@ export function Positions({ refreshKey }: { refreshKey: number }) {
                 </td>
                 <td>
                   {ltvPct != null ? (
-                    <span className={overLiq ? "mono bad" : "mono ok"}>
+                    <span className={`mono ${ltvTone}`}>
                       {ltvPct.toFixed(2)}%
                       {liquidationLtvPct != null && (
                         <span className="muted">
@@ -214,7 +231,9 @@ export function Positions({ refreshKey }: { refreshKey: number }) {
                   )}
                 </td>
                 <td style={{ textAlign: "right" }}>
-                  <ActionsMenu />
+                  <ActionsMenu
+                    onPick={(action) => setModal({ action, position: p })}
+                  />
                 </td>
               </tr>
             ))}
@@ -223,6 +242,18 @@ export function Positions({ refreshKey }: { refreshKey: number }) {
       )}
 
       {!items && !error && <div className="loading">Fetching positions…</div>}
+
+      {modal && (
+        <PositionActionModal
+          action={modal.action}
+          position={modal.position}
+          collateral={
+            collaterals.get(modal.position.collateralMint.toBase58()) ?? null
+          }
+          onClose={() => setModal(null)}
+          onSuccess={() => void load()}
+        />
+      )}
     </section>
   );
 }
