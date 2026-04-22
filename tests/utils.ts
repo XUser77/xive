@@ -25,7 +25,8 @@ export async function isRpcUp(): Promise<boolean> {
   try {
     const data = await rpcCall("getHealth");
     return data.result === "ok";
-  } catch {
+  } catch (e) {
+    console.info(e);
     return false;
   }
 }

@@ -11,3 +11,4 @@ coverage/
 *.so
 *.tsbuildinfo
 /vanity
+/surfpool

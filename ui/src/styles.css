@@ -333,3 +333,35 @@ button.refresh.primary:disabled { background: #2a3775; border-color: #2a3775; }
 
 .dropdown-item:hover { background: #1a2030; }
 .dropdown-item:focus { outline: none; background: #1a2030; }
+
+.balances-strip {
+  margin-bottom: 24px;
+}
+
+.balances-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.balance-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #0f121a;
+  border: 1px solid #1e2330;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.balance-symbol {
+  color: #8892a6;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.balance-amount {
+  color: #e7ecf3;
+}

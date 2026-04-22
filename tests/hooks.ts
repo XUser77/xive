@@ -2,7 +2,7 @@
  * Mocha Root Hooks — runs once before the entire test suite.
  * Starts Surfpool (mainnet fork) and deploys programs if not already running.
  */
-import { spawn, spawnSync } from "child_process";
+import { spawnSync } from "child_process";
 import path from "path";
 import { Keypair, PublicKey } from "@solana/web3.js";
 import * as anchor from "@anchor-lang/core";
@@ -23,7 +23,7 @@ const COLLATERALS = {
     price: 3000,
   },
   WBTC: {
-    mint: '5XZw2LKTyrfvfiskJ78AMpackRjPcyCif1WhUsPDuVqQ',
+    mint: '3NZ9JMVBmGAqocybic2c7LQCJScmgsAZ6vQqTDzcqmJh',
     tvl: 9000, // 90%
     liqTvl: 9500, // 95%
     price: 70000
@@ -174,29 +174,6 @@ async function resetAndDeploy(): Promise<void> {
 
 export const mochaHooks = {
   async beforeAll() {
-    if (await isRpcUp()) {
-      console.log("  [hooks] Surfpool already running — resetting state");
-      await resetAndDeploy();
-      return;
-    }
-
-    console.log("  [hooks] Starting Surfpool (mainnet fork, no auto-deploy)...");
-
-    const proc = spawn(
-      "surfpool",
-      [
-        "start",
-        "--network", "mainnet",
-        "--legacy-anchor-compatibility",
-        "--no-deploy",
-        "--airdrop-keypair-path", DEPLOY_WALLET,
-        "--ci",
-        "--daemon",
-      ],
-      { cwd: PROJECT_ROOT, stdio: "ignore", detached: true },
-    );
-    proc.unref();
-
     console.log("  [hooks] Waiting for RPC...");
     await poll(isRpcUp, 30_000, "Surfpool RPC");
 

@@ -19,6 +19,7 @@ import {
   positionPda,
   userCounterPda,
   xivePda,
+  xiveProgramDataPda,
 } from "./pdas";
 
 const DISCRIMINATOR_CREATE_USER_STATE = new Uint8Array([
@@ -29,6 +30,9 @@ const DISCRIMINATOR_OPEN_POSITION = new Uint8Array([
 ]);
 const DISCRIMINATOR_USER_COUNTER = new Uint8Array([
   154, 114, 103, 93, 77, 57, 80, 227,
+]);
+const DISCRIMINATOR_SET_PRICE = new Uint8Array([
+  16, 19, 182, 8, 149, 83, 72, 181,
 ]);
 
 function u64LE(v: bigint): Buffer {
@@ -63,6 +67,28 @@ export function createUserStateIx(user: PublicKey): TransactionInstruction {
       { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
     ],
     data: Buffer.from(DISCRIMINATOR_CREATE_USER_STATE),
+  });
+}
+
+export function setPriceIx(args: {
+  payer: PublicKey;
+  collateralMint: PublicKey;
+  price: bigint;
+}): TransactionInstruction {
+  const { payer, collateralMint, price } = args;
+  const data = Buffer.concat([
+    Buffer.from(DISCRIMINATOR_SET_PRICE),
+    u64LE(price),
+  ]);
+  return new TransactionInstruction({
+    programId: XIVE_PROGRAM_ID,
+    keys: [
+      { pubkey: payer, isSigner: true, isWritable: false },
+      { pubkey: XIVE_PROGRAM_ID, isSigner: false, isWritable: false },
+      { pubkey: xiveProgramDataPda(), isSigner: false, isWritable: false },
+      { pubkey: collateralPda(collateralMint), isSigner: false, isWritable: true },
+    ],
+    data,
   });
 }
 

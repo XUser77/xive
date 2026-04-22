@@ -2,10 +2,19 @@ import { PublicKey } from "@solana/web3.js";
 
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
+  BPF_UPGRADEABLE_LOADER_ID,
   PEG_KEEPER_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
+  VAULT_PROGRAM_ID,
   XIVE_PROGRAM_ID,
 } from "./config";
+
+export function xiveProgramDataPda(): PublicKey {
+  return PublicKey.findProgramAddressSync(
+    [XIVE_PROGRAM_ID.toBuffer()],
+    BPF_UPGRADEABLE_LOADER_ID,
+  )[0];
+}
 
 export function xivePda(): PublicKey {
   return PublicKey.findProgramAddressSync(
@@ -34,6 +43,13 @@ export function positionPda(user: PublicKey, counter: bigint): PublicKey {
   return PublicKey.findProgramAddressSync(
     [Buffer.from("position"), user.toBuffer(), buf],
     XIVE_PROGRAM_ID,
+  )[0];
+}
+
+export function vaultPda(): PublicKey {
+  return PublicKey.findProgramAddressSync(
+    [Buffer.from("vault")],
+    VAULT_PROGRAM_ID,
   )[0];
 }
 

@@ -6,7 +6,8 @@ import {
   type ParsedAccountData,
 } from "@solana/web3.js";
 
-import { KNOWN_MINTS } from "./config";
+import { CollateralPrices } from "./CollateralPrices";
+import { KNOWN_MINTS, XUSD_MINT } from "./config";
 import { surfnetSetAccount, surfnetSetTokenAccount } from "./surfnet";
 
 const TOKEN_PROGRAM_ID = new PublicKey(
@@ -252,7 +253,6 @@ export function Cheats() {
           <tr>
             <th>Asset</th>
             <th>Balance</th>
-            <th>Raw</th>
             <th></th>
           </tr>
         </thead>
@@ -262,10 +262,6 @@ export function Cheats() {
               r.kind === "native"
                 ? `${formatAmount(r.rawBalance, 9)} SOL`
                 : `${formatAmount(r.rawBalance, r.decimals)} ${r.symbol}`;
-            const rawText =
-              r.kind === "native"
-                ? `${r.rawBalance.toString()} lamports`
-                : `${r.rawBalance.toString()} base units`;
             return (
               <tr key={r.symbol + (r.kind === "token" ? r.mint.toBase58() : "")}>
                 <td>
@@ -277,25 +273,26 @@ export function Cheats() {
                   )}
                 </td>
                 <td>{humanBalance}</td>
-                <td className="mono muted">{rawText}</td>
                 <td>
-                  <button
-                    className="refresh"
-                    onClick={() =>
-                      setModal(
-                        r.kind === "native"
-                          ? { kind: "native", symbol: "SOL", decimals: 9 }
-                          : {
-                              kind: "token",
-                              symbol: r.symbol,
-                              mint: r.mint,
-                              decimals: r.decimals,
-                            },
-                      )
-                    }
-                  >
-                    Fund
-                  </button>
+                  {!(r.kind === "token" && r.mint.equals(XUSD_MINT)) && (
+                    <button
+                      className="refresh"
+                      onClick={() =>
+                        setModal(
+                          r.kind === "native"
+                            ? { kind: "native", symbol: "SOL", decimals: 9 }
+                            : {
+                                kind: "token",
+                                symbol: r.symbol,
+                                mint: r.mint,
+                                decimals: r.decimals,
+                              },
+                        )
+                      }
+                    >
+                      Fund
+                    </button>
+                  )}
                 </td>
               </tr>
             );
@@ -315,6 +312,8 @@ export function Cheats() {
       <p className="muted" style={{ marginTop: 12, fontSize: 12 }}>
         1 SOL = {LAMPORTS_PER_SOL.toLocaleString()} lamports
       </p>
+
+      <CollateralPrices />
     </section>
   );
 }

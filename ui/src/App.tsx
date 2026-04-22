@@ -4,9 +4,10 @@ import { WalletProviders } from "./WalletProviders";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { MainTab } from "./MainTab";
 import { Cheats } from "./Cheats";
+import { VaultTab } from "./VaultTab";
 import { RPC_ENDPOINT } from "./config";
 
-type Tab = "main" | "cheats";
+type Tab = "main" | "vault" | "cheats";
 
 export default function App() {
   const [tab, setTab] = useState<Tab>("main");
@@ -32,6 +33,12 @@ export default function App() {
             Main
           </button>
           <button
+            className={`tab ${tab === "vault" ? "active" : ""}`}
+            onClick={() => setTab("vault")}
+          >
+            Vault
+          </button>
+          <button
             className={`tab ${tab === "cheats" ? "active" : ""}`}
             onClick={() => setTab("cheats")}
           >
@@ -39,7 +46,9 @@ export default function App() {
           </button>
         </nav>
 
-        {tab === "main" ? <MainTab /> : <Cheats />}
+        {tab === "main" && <MainTab />}
+        {tab === "vault" && <VaultTab />}
+        {tab === "cheats" && <Cheats />}
       </div>
     </WalletProviders>
   );

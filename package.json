@@ -3,7 +3,8 @@
   "type": "module",
   "scripts": {
     "lint:fix": "prettier */*.js \"*/**/*{.js,.ts}\" -w",
-    "lint": "prettier */*.js \"*/**/*{.js,.ts}\" --check"
+    "lint": "prettier */*.js \"*/**/*{.js,.ts}\" --check",
+    "surfpool": "surfpool start --legacy-anchor-compatibility --no-deploy --log-path surfpool --no-tui --log-level debug --rpc-url https://solana-mainnet.g.alchemy.com/v2/agv64qg5ioxEnHcoW4thH"
   },
   "dependencies": {
     "@anchor-lang/core": "^1.0.0",
