@@ -26,4 +26,8 @@ pub mod vault {
     pub fn withdraw(ctx: Context<Withdraw>, lp_amount: u64) -> Result<()> {
         withdraw::handler(ctx, lp_amount)
     }
+
+    pub fn liquidate(ctx: Context<Liquidate>) -> Result<()> {
+        liquidate::handler(ctx)
+    }
 }

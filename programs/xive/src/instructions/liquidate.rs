@@ -2,6 +2,7 @@ use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Burn, Mint, Token, TokenAccount, Transfer};
 
 use crate::error::ErrorCode;
+use crate::util::liquidation_threshold_xusd;
 use crate::{Collateral, Position, Xive};
 use crate::{COLLATERAL_SEED, VAULT_PROGRAM_ID, VAULT_SEED, XIVE_SEED};
 
@@ -18,7 +19,7 @@ pub struct Liquidate<'info> {
         seeds = [XIVE_SEED.as_bytes()],
         bump = xive.bump,
     )]
-    pub xive: Account<'info, Xive>,
+    pub xive: Box<Account<'info, Xive>>,
 
     #[account(
         mut,
@@ -26,38 +27,37 @@ pub struct Liquidate<'info> {
         bump = collateral.bump,
         constraint = collateral.price > 0 @ ErrorCode::ZeroPrice,
     )]
-    pub collateral: Account<'info, Collateral>,
+    pub collateral: Box<Account<'info, Collateral>>,
 
     #[account(mut)]
-    pub position: Account<'info, Position>,
+    pub position: Box<Account<'info, Position>>,
 
     #[account(mut, address = peg_keeper::XUSD_MINT)]
-    pub xusd_mint: Account<'info, Mint>,
+    pub xusd_mint: Box<Account<'info, Mint>>,
 
     #[account(
         mut,
         associated_token::mint = xusd_mint,
         associated_token::authority = caller,
     )]
-    pub caller_xusd_ata: Account<'info, TokenAccount>,
+    pub caller_xusd_ata: Box<Account<'info, TokenAccount>>,
 
-    /// CHECK: only used as address for ATA derivation; validated via position.collateral_mint
     #[account(address = position.collateral_mint)]
-    pub collateral_mint: UncheckedAccount<'info>,
+    pub collateral_mint: Box<Account<'info, Mint>>,
 
     #[account(
         mut,
         associated_token::mint = collateral_mint,
         associated_token::authority = caller,
     )]
-    pub caller_collateral_ata: Account<'info, TokenAccount>,
+    pub caller_collateral_ata: Box<Account<'info, TokenAccount>>,
 
     #[account(
         mut,
         associated_token::mint = collateral_mint,
         associated_token::authority = xive,
     )]
-    pub vault_collateral_ata: Account<'info, TokenAccount>,
+    pub vault_collateral_ata: Box<Account<'info, TokenAccount>>,
 
     pub token_program: Program<'info, Token>,
 }
@@ -70,14 +70,12 @@ pub fn handler(ctx: Context<Liquidate>) -> Result<()> {
 
     require!(debt > 0, ErrorCode::InvalidAmount);
 
-    let tvl = (collateral_amount as u128)
-        .checked_mul(collateral.price as u128)
-        .unwrap();
-    let liquidation_tvl = tvl
-        .checked_mul(collateral.liquidation_ltv as u128)
-        .unwrap()
-        .checked_div(100)
-        .unwrap();
+    let liquidation_tvl = liquidation_threshold_xusd(
+        collateral_amount,
+        collateral.price,
+        collateral.liquidation_ltv,
+        ctx.accounts.collateral_mint.decimals,
+    );
     require!(debt as u128 >= liquidation_tvl, ErrorCode::PositionHealthy);
 
     token::burn(

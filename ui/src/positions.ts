@@ -45,3 +45,17 @@ export async function fetchUserPositions(
     .map(({ pubkey, account }) => decode(pubkey, account.data as Buffer))
     .sort((a, b) => a.address.toBase58().localeCompare(b.address.toBase58()));
 }
+
+export async function fetchAllPositions(
+  connection: Connection,
+): Promise<Position[]> {
+  const accounts = await connection.getProgramAccounts(XIVE_PROGRAM_ID, {
+    filters: [
+      { dataSize: POSITION_SIZE },
+      { memcmp: { offset: 0, bytes: bs58.encode(POSITION_DISCRIMINATOR) } },
+    ],
+  });
+  return accounts
+    .map(({ pubkey, account }) => decode(pubkey, account.data as Buffer))
+    .sort((a, b) => a.address.toBase58().localeCompare(b.address.toBase58()));
+}

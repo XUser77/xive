@@ -2,6 +2,7 @@ use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, Token, TokenAccount};
 
 use crate::error::ErrorCode;
+use crate::util::max_loan_xusd;
 use crate::{Collateral, Position, Xive};
 use crate::{COLLATERAL_SEED, PEG_KEEPER_PROGRAM_ID, PEG_KEEPER_SEED, XIVE_SEED};
 
@@ -14,20 +15,23 @@ pub struct Borrow<'info> {
         seeds = [XIVE_SEED.as_bytes()],
         bump = xive.bump,
     )]
-    pub xive: Account<'info, Xive>,
+    pub xive: Box<Account<'info, Xive>>,
 
     #[account(
         mut,
         has_one = user,
     )]
-    pub position: Account<'info, Position>,
+    pub position: Box<Account<'info, Position>>,
 
     #[account(
         seeds = [COLLATERAL_SEED.as_bytes(), position.collateral_mint.as_ref()],
         bump = collateral.bump,
         constraint = collateral.price > 0 @ ErrorCode::ZeroPrice,
     )]
-    pub collateral: Account<'info, Collateral>,
+    pub collateral: Box<Account<'info, Collateral>>,
+
+    #[account(address = position.collateral_mint)]
+    pub collateral_mint: Box<Account<'info, Mint>>,
 
     /// CHECK: peg_keeper PDA — address derived from well-known program ID and seed
     #[account(
@@ -39,14 +43,14 @@ pub struct Borrow<'info> {
     pub peg_keeper: UncheckedAccount<'info>,
 
     #[account(mut, address = peg_keeper::XUSD_MINT)]
-    pub xusd_mint: Account<'info, Mint>,
+    pub xusd_mint: Box<Account<'info, Mint>>,
 
     #[account(
         mut,
         associated_token::mint = xusd_mint,
         associated_token::authority = user,
     )]
-    pub user_xusd_ata: Account<'info, TokenAccount>,
+    pub user_xusd_ata: Box<Account<'info, TokenAccount>>,
 
     pub token_program: Program<'info, Token>,
     pub peg_keeper_program: Program<'info, peg_keeper::program::PegKeeper>,
@@ -60,10 +64,12 @@ pub fn handler(ctx: Context<Borrow>, amount: u64) -> Result<()> {
 
     let new_loan = position.loan_amount.checked_add(amount).unwrap();
 
-    let max_loan = (position.collateral_amount as u128)
-        .checked_mul(collateral.price as u128).unwrap()
-        .checked_mul(collateral.ltv as u128).unwrap()
-        .checked_div(100).unwrap();
+    let max_loan = max_loan_xusd(
+        position.collateral_amount,
+        collateral.price,
+        collateral.ltv,
+        ctx.accounts.collateral_mint.decimals,
+    );
     require!(new_loan as u128 <= max_loan, ErrorCode::InsufficientCollateral);
 
     let bump = ctx.accounts.xive.bump;

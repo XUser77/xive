@@ -4,8 +4,9 @@ use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
 use peg_keeper::{PegKeeper, XUSD_MINT};
 
 use crate::error::ErrorCode;
+use crate::util::max_loan_xusd;
 use crate::{Collateral, Position, UserCounter, Xive};
-use crate::{COLLATERAL_SEED, PEG_KEEPER_PROGRAM_ID, PEG_KEEPER_SEED, POSITION_SEED, USER_COUNTER_SEED, XIVE_SEED};
+use crate::{COLLATERAL_SEED, PEG_KEEPER_SEED, POSITION_SEED, USER_COUNTER_SEED, XIVE_SEED};
 
 #[derive(Accounts)]
 pub struct OpenPosition<'info> {
@@ -87,15 +88,13 @@ pub struct OpenPosition<'info> {
 pub fn handler(ctx: Context<OpenPosition>, collateral_amount: u64, loan_amount: u64) -> Result<()> {
     let collateral = &ctx.accounts.collateral;
 
-    // LTV check: loan_amount <= collateral_amount * price * ltv / 100
-    // price = XUSD micro-units per 1 raw collateral unit
-    let max_loan = (collateral_amount as u128)
-        .checked_mul(collateral.price as u128)
-        .unwrap()
-        .checked_mul(collateral.ltv as u128)
-        .unwrap()
-        .checked_div(100)
-        .unwrap();
+    // price = whole XUSD per whole collateral; ltv in bps (9000 = 90%).
+    let max_loan = max_loan_xusd(
+        collateral_amount,
+        collateral.price,
+        collateral.ltv,
+        ctx.accounts.collateral_mint.decimals,
+    );
 
     require!(loan_amount as u128 <= max_loan, ErrorCode::InsufficientCollateral);
 

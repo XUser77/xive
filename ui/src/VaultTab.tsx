@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
+import { PublicKey } from "@solana/web3.js";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 
 import {
+  KNOWN_MINTS,
   LP_VAULT_DECIMALS,
   LP_VAULT_MINT,
   XUSD_DECIMALS,
@@ -9,6 +11,7 @@ import {
 } from "./config";
 import { ata, vaultPda } from "./pdas";
 import { VaultActionModal } from "./VaultActionModal";
+import { AllPositions } from "./AllPositions";
 
 function formatBase(raw: bigint, decimals: number, maxFrac = 6): string {
   if (decimals === 0) return raw.toLocaleString("en-US");
@@ -27,14 +30,27 @@ function readU64LE(data: Uint8Array, offset: number): bigint {
   return view.getBigUint64(offset, true);
 }
 
+type CollateralBalance = { symbol: string; decimals: number; amount: bigint };
+
+const COLLATERAL_MINTS: { mint: PublicKey; symbol: string; decimals: number }[] =
+  Object.entries(KNOWN_MINTS)
+    .filter(([m]) => m !== XUSD_MINT.toBase58())
+    .map(([mint, meta]) => ({
+      mint: new PublicKey(mint),
+      symbol: meta.symbol,
+      decimals: meta.decimals,
+    }));
+
 export function VaultTab() {
   const { connection } = useConnection();
   const { publicKey } = useWallet();
   const [vaultXusd, setVaultXusd] = useState<bigint | null>(null);
   const [lpSupply, setLpSupply] = useState<bigint | null>(null);
+  const [collateralBalances, setCollateralBalances] = useState<CollateralBalance[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [modal, setModal] = useState<"deposit" | "withdraw" | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -42,10 +58,12 @@ export function VaultTab() {
     try {
       const vault = vaultPda();
       const vaultAta = ata(vault, XUSD_MINT);
-      const [vaultAtaInfo, mintInfo] = await Promise.all([
-        connection.getAccountInfo(vaultAta, "confirmed"),
-        connection.getAccountInfo(LP_VAULT_MINT, "confirmed"),
-      ]);
+      const collateralAtas = COLLATERAL_MINTS.map((c) => ata(vault, c.mint));
+      const infos = await connection.getMultipleAccountsInfo(
+        [vaultAta, LP_VAULT_MINT, ...collateralAtas],
+        "confirmed",
+      );
+      const [vaultAtaInfo, mintInfo, ...collateralInfos] = infos;
 
       // SPL Token Account: amount is u64 at offset 64
       if (vaultAtaInfo && vaultAtaInfo.data.length >= 72) {
@@ -60,6 +78,15 @@ export function VaultTab() {
       } else {
         setLpSupply(null);
       }
+
+      setCollateralBalances(
+        COLLATERAL_MINTS.map((c, i) => {
+          const info = collateralInfos[i];
+          const amount =
+            info && info.data.length >= 72 ? readU64LE(info.data, 64) : 0n;
+          return { symbol: c.symbol, decimals: c.decimals, amount };
+        }),
+      );
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -102,6 +129,14 @@ export function VaultTab() {
                 : "—"}
             </span>
           </div>
+          {collateralBalances.map((b) => (
+            <div className="preview-row" key={b.symbol}>
+              <span>Vault {b.symbol} balance</span>
+              <span className="mono">
+                {formatBase(b.amount, b.decimals)} {b.symbol}
+              </span>
+            </div>
+          ))}
           <div className="preview-row">
             <span>LP mint</span>
             <span className="mono" title={LP_VAULT_MINT.toBase58()}>
@@ -139,9 +174,14 @@ export function VaultTab() {
         <VaultActionModal
           action={modal}
           onClose={() => setModal(null)}
-          onSuccess={() => void load()}
+          onSuccess={() => {
+            void load();
+            setRefreshKey((k) => k + 1);
+          }}
         />
       )}
+
+      <AllPositions refreshKey={refreshKey} />
     </section>
   );
 }
