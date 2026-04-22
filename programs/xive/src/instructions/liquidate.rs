@@ -3,11 +3,15 @@ use anchor_spl::token::{self, Burn, Mint, Token, TokenAccount, Transfer};
 
 use crate::error::ErrorCode;
 use crate::{Collateral, Position, Xive};
-use crate::{COLLATERAL_SEED, XIVE_SEED};
+use crate::{COLLATERAL_SEED, VAULT_PROGRAM_ID, VAULT_SEED, XIVE_SEED};
 
 #[derive(Accounts)]
 pub struct Liquidate<'info> {
-    #[account(mut)]
+    #[account(
+        seeds = [VAULT_SEED.as_bytes()],
+        seeds::program = VAULT_PROGRAM_ID,
+        bump,
+    )]
     pub caller: Signer<'info>,
 
     #[account(

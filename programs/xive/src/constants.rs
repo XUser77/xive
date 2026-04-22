@@ -13,6 +13,12 @@ pub const PEG_KEEPER_PROGRAM_ID: Pubkey = pubkey!("xpeguefXy5MrgkbirCyuCCD5EfbUM
 pub const PEG_KEEPER_SEED: &str = "peg-keeper";
 
 #[constant]
+pub const VAULT_PROGRAM_ID: Pubkey = pubkey!("xva8xAjCCadQpphx5wCXnoLf5rkZuYu85Xxt88V3XnK");
+
+#[constant]
+pub const VAULT_SEED: &str = "vault";
+
+#[constant]
 pub const COLLATERAL_SEED: &str = "collateral";
 
 #[constant]
