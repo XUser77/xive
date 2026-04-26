@@ -17,7 +17,7 @@ body { margin: 0; }
 .topbar {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   gap: 16px;
   margin-bottom: 32px;
 }
@@ -26,7 +26,12 @@ body { margin: 0; }
   display: flex;
   align-items: baseline;
   gap: 12px;
+  height: 48px;
+  padding: 0 4px;
+  box-sizing: border-box;
 }
+
+.brand > * { align-self: center; }
 
 .brand h1 {
   margin: 0;
@@ -119,7 +124,12 @@ button.refresh {
 button.refresh:hover { border-color: #3d4557; }
 button.refresh:disabled { opacity: 0.5; cursor: not-allowed; }
 
-.actions { display: flex; gap: 10px; align-items: center; }
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-end;
+}
 
 .section-header {
   display: flex;
@@ -336,24 +346,28 @@ button.refresh.primary:disabled { background: #2a3775; border-color: #2a3775; }
 .dropdown-item:focus { outline: none; background: #1a2030; }
 
 .balances-strip {
-  margin-bottom: 24px;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .balances-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
+  justify-content: flex-end;
 }
 
 .balance-chip {
   display: inline-flex;
   align-items: baseline;
-  gap: 8px;
-  padding: 8px 12px;
+  gap: 6px;
+  padding: 4px 10px;
   background: #0f121a;
   border: 1px solid #1e2330;
-  border-radius: 8px;
-  font-size: 13px;
+  border-radius: 6px;
+  font-size: 12px;
 }
 
 .balance-symbol {

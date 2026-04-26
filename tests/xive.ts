@@ -14,6 +14,9 @@ const WETH_MINT = new PublicKey("7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs");
 const XUSD_MINT = new PublicKey("xusdSPQZr3PMbWNE4CcxVgezKL2UPcR74o45c6LWVF4");
 const XIVE_PROGRAM_ID = new PublicKey("xiveHxXiqHUkFnX5DsmTsAbByTZS5bdGGpdZ9wpmNCR");
 
+// Default WETH price set by the hooks setup (mirrors COLLATERALS.WETH.price in tests/hooks.ts).
+const WETH_DEFAULT_PRICE = 3000;
+
 function getATA(owner: PublicKey, mint: PublicKey): PublicKey {
   const [ata] = PublicKey.findProgramAddressSync(
     [owner.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), mint.toBuffer()],
@@ -27,6 +30,14 @@ function positionPda(user: PublicKey, counter: bigint): PublicKey {
   buf.writeBigUInt64LE(counter);
   const [pda] = PublicKey.findProgramAddressSync(
     [Buffer.from("position"), user.toBuffer(), buf],
+    XIVE_PROGRAM_ID,
+  );
+  return pda;
+}
+
+function collateralPda(mint: PublicKey): PublicKey {
+  const [pda] = PublicKey.findProgramAddressSync(
+    [Buffer.from("collateral"), mint.toBuffer()],
     XIVE_PROGRAM_ID,
   );
   return pda;
@@ -69,6 +80,17 @@ describe("xive — lending flow (surfpool mainnet fork)", () => {
     const account = await getAccount(provider.connection, ata, "confirmed");
     expect(account.amount).to.equal(1_000_000n);
 
+    // Other test files (e.g. liquidate.ts) may have moved the WETH price during their own
+    // run — the global mochaHooks state is shared. Reset to the default so this suite's
+    // LTV math is independent of test execution order.
+    await xiveProgram.methods
+      .setPrice(new BN(WETH_DEFAULT_PRICE))
+      .accounts({
+        payer: testWallet.publicKey,
+        collateral: collateralPda(WETH_MINT),
+      } as never)
+      .signers([testWallet])
+      .rpc();
   });
 
   it("create user state", async () => {
@@ -120,6 +142,7 @@ describe("xive — lending flow (surfpool mainnet fork)", () => {
       .accounts({
         user: testWallet.publicKey,
         position: position0,
+        collateralMint: WETH_MINT,
       })
       .signers([testWallet])
       .rpc();
@@ -180,9 +203,10 @@ describe("xive — lending flow (surfpool mainnet fork)", () => {
   });
 
   it("rejects a withdraw that would violate LTV", async () => {
-    // Open a second, highly-leveraged position
+    // Open a second, near-max-LTV position. With WETH (8 dec) collateral=100 raw at price=$3000
+    // and 90% LTV, max_loan = 100 * 3000 * 0.9 / 10^(8-6) = 2700 raw XUSD. Borrow 2500 (≈93% of cap).
     await xiveProgram.methods
-      .openPosition(new BN(100), new BN(10_000_000))
+      .openPosition(new BN(100), new BN(2_500))
       .accounts({
         user: testWallet.publicKey,
         collateralMint: WETH_MINT,

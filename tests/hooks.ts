@@ -4,9 +4,19 @@
  */
 import { spawnSync } from "child_process";
 import path from "path";
-import { Keypair, PublicKey } from "@solana/web3.js";
+import { Connection, Keypair, PublicKey } from "@solana/web3.js";
 import * as anchor from "@anchor-lang/core";
 import {Program} from "@anchor-lang/core";
+import { AnchorProvider, Wallet } from "@coral-xyz/anchor";
+import {
+  WhirlpoolContext,
+  buildWhirlpoolClient,
+  ORCA_WHIRLPOOL_PROGRAM_ID,
+  ORCA_WHIRLPOOLS_CONFIG,
+  PriceMath,
+  PoolUtil,
+} from "@orca-so/whirlpools-sdk";
+import Decimal from "decimal.js";
 import type { PegKeeper } from "../target/types/peg_keeper.ts";
 import type { Xive } from "../target/types/xive.ts";
 import type { Vault } from "../target/types/vault.js";
@@ -38,6 +48,13 @@ const PROGRAMS: { name: string; so: string; keypair: string }[] = [
 
 const XUSD_MINT_KEY_PAIR = "keys/xusd-mint-keypair.json";
 const VAULT_LP_MINT_KEY_PAIR = "keys/vault-mint-keypair.json";
+
+// Mainnet USDC — cloned by surfpool on first access.
+const USDC_MINT = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
+// Orca 0.01% / tick_spacing=1 fee tier — standard stable config.
+const STABLE_TICK_SPACING = 1;
+const XUSD_DECIMALS = 6;
+const USDC_DECIMALS = 6;
 
 function log(line: string, ...args: any[]) {
   if (args.length == 0) {
@@ -94,6 +111,36 @@ function deployPrograms(): void {
   console.log("  [hooks] Programs deployed");
 }
 
+async function initializeOrcaPool(deployKeyPair: Keypair, xusdMint: PublicKey): Promise<PublicKey> {
+  log("Initializing Orca XUSD/USDC whirlpool...");
+  const connection = new Connection(RPC_URL, "confirmed");
+  const wallet = new Wallet(deployKeyPair);
+  const provider = new AnchorProvider(connection, wallet, { commitment: "confirmed" });
+  const ctx = WhirlpoolContext.from(provider.connection, provider.wallet, ORCA_WHIRLPOOL_PROGRAM_ID);
+  const client = buildWhirlpoolClient(ctx);
+
+  const [mintA, mintB] = PoolUtil.orderMints(xusdMint, USDC_MINT).map((m) => new PublicKey(m));
+  // 1 XUSD = 1 USDC (both 6 decimals) — price is 1.0 regardless of mint order.
+  const initialTick = PriceMath.priceToInitializableTickIndex(
+    new Decimal(1),
+    XUSD_DECIMALS,
+    USDC_DECIMALS,
+    STABLE_TICK_SPACING,
+  );
+
+  const { poolKey, tx } = await client.createPool(
+    ORCA_WHIRLPOOLS_CONFIG,
+    mintA,
+    mintB,
+    STABLE_TICK_SPACING,
+    initialTick,
+    deployKeyPair.publicKey,
+  );
+  const sig = await tx.buildAndExecute();
+  log(`Orca pool created: ${poolKey.toBase58()} (sig ${sig})`);
+  return poolKey;
+}
+
 async function initPrograms(deployKeyPair: Keypair): Promise<void> {
   log("Initializing xive...");
   const xiveProgram = anchor.workspace.xive as Program<Xive>;
@@ -120,11 +167,13 @@ async function initPrograms(deployKeyPair: Keypair): Promise<void> {
   log("Peg keeper initialized");
   log(`XUSD address: ${xusdMintAccountKeypair.publicKey.toBase58()}`);
 
+  const orcaPool = await initializeOrcaPool(deployKeyPair, xusdMintAccountKeypair.publicKey);
+
   log("Initializing vault...");
   const vaultProgram = anchor.workspace.vault as Program<Vault>;
   const vaultMintAccountKeyPair = getKeyPair(VAULT_LP_MINT_KEY_PAIR);
   await vaultProgram.methods
-    .initialize()
+    .initialize(orcaPool)
     .accounts({
       payer: deployKeyPair.publicKey,
       lpVaultMint: vaultMintAccountKeyPair.publicKey
@@ -179,6 +228,6 @@ export const mochaHooks = {
 
     await resetAndDeploy();
 
-    console.log("  [hooks] Surfpool ready");
+    console.log("  [hooks] Ready");
   },
 };

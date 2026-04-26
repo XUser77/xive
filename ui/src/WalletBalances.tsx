@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { type ParsedAccountData } from "@solana/web3.js";
 
-import { KNOWN_MINTS, TOKEN_PROGRAM_ID, XUSD_MINT } from "./config";
+import { KNOWN_MINTS, LP_VAULT_DECIMALS, LP_VAULT_MINT, TOKEN_PROGRAM_ID, XUSD_MINT } from "./config";
 
 function formatAmount(raw: bigint, decimals: number): string {
   if (decimals === 0) return raw.toLocaleString("en-US");
@@ -13,15 +13,25 @@ function formatAmount(raw: bigint, decimals: number): string {
   return frac ? `${wholeFmt}.${frac}` : wholeFmt;
 }
 
-const DISPLAY_ORDER: { symbol: string; mint?: string; decimals: number }[] = [
+type BalanceEntry = { symbol: string; mint?: string; decimals: number };
+
+const EXTERNAL_BALANCES: BalanceEntry[] = [
   { symbol: "SOL", decimals: 9 },
   ...Object.entries(KNOWN_MINTS)
     .filter(([mint]) => mint !== XUSD_MINT.toBase58())
     .map(([mint, meta]) => ({ symbol: meta.symbol, mint, decimals: meta.decimals })),
+];
+
+const XIVE_BALANCES: BalanceEntry[] = [
   {
     symbol: "XUSD",
     mint: XUSD_MINT.toBase58(),
     decimals: KNOWN_MINTS[XUSD_MINT.toBase58()].decimals,
+  },
+  {
+    symbol: "LP",
+    mint: LP_VAULT_MINT.toBase58(),
+    decimals: LP_VAULT_DECIMALS,
   },
 ];
 
@@ -63,23 +73,28 @@ export function WalletBalances({ refreshKey = 0 }: { refreshKey?: number }) {
 
   if (!publicKey) return null;
 
+  const renderRow = (entries: BalanceEntry[]) => (
+    <div className="balances-row">
+      {entries.map((entry) => {
+        const raw =
+          entry.mint == null ? sol ?? 0n : tokens.get(entry.mint) ?? 0n;
+        return (
+          <div className="balance-chip" key={entry.symbol}>
+            <span className="balance-symbol">{entry.symbol}</span>
+            <span className="balance-amount mono">
+              {formatAmount(raw, entry.decimals)}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+
   return (
     <section className="balances-strip">
       {error && <div className="error">{error}</div>}
-      <div className="balances-row">
-        {DISPLAY_ORDER.map((entry) => {
-          const raw =
-            entry.mint == null ? sol ?? 0n : tokens.get(entry.mint) ?? 0n;
-          return (
-            <div className="balance-chip" key={entry.symbol}>
-              <span className="balance-symbol">{entry.symbol}</span>
-              <span className="balance-amount mono">
-                {formatAmount(raw, entry.decimals)}
-              </span>
-            </div>
-          );
-        })}
-      </div>
+      {renderRow(EXTERNAL_BALANCES)}
+      {renderRow(XIVE_BALANCES)}
     </section>
   );
 }

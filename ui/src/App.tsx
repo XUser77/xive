@@ -1,16 +1,20 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 
 import { WalletProviders } from "./WalletProviders";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { MainTab } from "./MainTab";
 import { Cheats } from "./Cheats";
 import { VaultTab } from "./VaultTab";
+import { SwapTab } from "./SwapTab";
+import { WalletBalances } from "./WalletBalances";
 import { RPC_ENDPOINT } from "./config";
 
-type Tab = "main" | "vault" | "cheats";
+type Tab = "main" | "vault" | "swap" | "cheats";
 
 export default function App() {
   const [tab, setTab] = useState<Tab>("main");
+  const [balanceRefresh, setBalanceRefresh] = useState(0);
+  const bumpBalances = useCallback(() => setBalanceRefresh((k) => k + 1), []);
 
   return (
     <WalletProviders>
@@ -22,6 +26,7 @@ export default function App() {
           </div>
           <div className="actions">
             <WalletMultiButton />
+            <WalletBalances refreshKey={balanceRefresh} />
           </div>
         </header>
 
@@ -39,6 +44,12 @@ export default function App() {
             Vault
           </button>
           <button
+            className={`tab ${tab === "swap" ? "active" : ""}`}
+            onClick={() => setTab("swap")}
+          >
+            Swap
+          </button>
+          <button
             className={`tab ${tab === "cheats" ? "active" : ""}`}
             onClick={() => setTab("cheats")}
           >
@@ -46,8 +57,9 @@ export default function App() {
           </button>
         </nav>
 
-        {tab === "main" && <MainTab />}
+        {tab === "main" && <MainTab onBalanceChange={bumpBalances} />}
         {tab === "vault" && <VaultTab />}
+        {tab === "swap" && <SwapTab />}
         {tab === "cheats" && <Cheats />}
       </div>
     </WalletProviders>

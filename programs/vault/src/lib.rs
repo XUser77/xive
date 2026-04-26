@@ -15,8 +15,8 @@ declare_id!("xva8xAjCCadQpphx5wCXnoLf5rkZuYu85Xxt88V3XnK");
 pub mod vault {
     use super::*;
 
-    pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
-        initialize::handler(ctx)
+    pub fn initialize(ctx: Context<Initialize>, orca_pool: Pubkey) -> Result<()> {
+        initialize::handler(ctx, orca_pool)
     }
 
     pub fn deposit(ctx: Context<Deposit>, amount: u64) -> Result<()> {
@@ -27,7 +27,7 @@ pub mod vault {
         withdraw::handler(ctx, lp_amount)
     }
 
-    pub fn liquidate(ctx: Context<Liquidate>) -> Result<()> {
-        liquidate::handler(ctx)
+    pub fn liquidate(ctx: Context<Liquidate>, a_to_b_one: bool, a_to_b_two: bool) -> Result<()> {
+        liquidate::handler(ctx, a_to_b_one, a_to_b_two)
     }
 }

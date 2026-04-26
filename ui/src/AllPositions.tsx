@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Transaction } from "@solana/web3.js";
+import { ComputeBudgetProgram, Transaction } from "@solana/web3.js";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 
 import { fetchAllPositions, type Position } from "./positions";
 import { fetchCollaterals, type Collateral } from "./collateral";
 import { KNOWN_MINTS, XUSD_DECIMALS } from "./config";
-import { vaultLiquidateIx } from "./vaultInstructions";
+import { buildVaultLiquidateIx } from "./vaultInstructions";
 
 function shorten(pk: string, n = 4): string {
   return `${pk.slice(0, n)}…${pk.slice(-n)}`;
@@ -68,13 +68,18 @@ export function AllPositions({ refreshKey }: { refreshKey: number }) {
       setLiquidating(key);
       setLiquidateError(null);
       try {
-        const tx = new Transaction().add(
-          vaultLiquidateIx({
-            payer: publicKey,
-            position: position.address,
-            collateralMint: position.collateralMint,
-          }),
-        );
+        const ix = await buildVaultLiquidateIx({
+          connection,
+          payer: publicKey,
+          position: position.address,
+          collateralMint: position.collateralMint,
+          debt: position.loanAmount,
+        });
+        // Default 200k CU isn't enough for ATA inits + xive.liquidate + Orca TwoHopSwap +
+        // xive.return_collateral on the same tx.
+        const tx = new Transaction()
+          .add(ComputeBudgetProgram.setComputeUnitLimit({ units: 400_000 }))
+          .add(ix);
         tx.feePayer = publicKey;
         const latest = await connection.getLatestBlockhash("confirmed");
         tx.recentBlockhash = latest.blockhash;

@@ -11,6 +11,7 @@ pub mod repay;
 pub mod set_price;
 pub mod withdraw_collateral;
 pub mod create_user_state;
+pub mod return_collateral;
 
 pub use allow_collateral::*;
 pub use borrow::*;
@@ -23,3 +24,4 @@ pub use repay::*;
 pub use set_price::*;
 pub use withdraw_collateral::*;
 pub use create_user_state::*;
+pub use return_collateral::*;

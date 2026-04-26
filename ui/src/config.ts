@@ -38,8 +38,28 @@ export const XUSD_MINT = new PublicKey(
 
 export const XUSD_DECIMALS = 6;
 
+export const USDC_MINT = new PublicKey(
+  "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+);
+
+export const USDC_DECIMALS = 6;
+
+export const WHIRLPOOL_PROGRAM_ID = new PublicKey(
+  "whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc",
+);
+
+export const WHIRLPOOLS_CONFIG = new PublicKey(
+  "2LecshUwdy9xi7meFgHtFJQNSKk4KdTrcpvaB56dP2NQ",
+);
+
+export const STABLE_TICK_SPACING = 1;
+
+// Must match programs/vault/src/constants.rs::LIQUIDATION_BONUS_BPS.
+export const LIQUIDATION_BONUS_BPS = 500n;
+
 export const KNOWN_MINTS: Record<string, { symbol: string; decimals: number }> = {
   "7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs": { symbol: "WETH", decimals: 8 },
   "3NZ9JMVBmGAqocybic2c7LQCJScmgsAZ6vQqTDzcqmJh": { symbol: "WBTC", decimals: 8 },
+  [USDC_MINT.toBase58()]: { symbol: "USDC", decimals: USDC_DECIMALS },
   [XUSD_MINT.toBase58()]: { symbol: "XUSD", decimals: XUSD_DECIMALS },
 };

@@ -2,15 +2,16 @@ import { useState } from "react";
 
 import { Positions } from "./Positions";
 import { CollateralList } from "./CollateralList";
-import { WalletBalances } from "./WalletBalances";
 
-export function MainTab() {
+export function MainTab({ onBalanceChange }: { onBalanceChange: () => void }) {
   const [refreshKey, setRefreshKey] = useState(0);
-  const bump = () => setRefreshKey((k) => k + 1);
+  const bump = () => {
+    setRefreshKey((k) => k + 1);
+    onBalanceChange();
+  };
 
   return (
     <>
-      <WalletBalances refreshKey={refreshKey} />
       <Positions refreshKey={refreshKey} />
       <CollateralList onPositionOpened={bump} />
     </>

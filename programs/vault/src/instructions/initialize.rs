@@ -32,10 +32,12 @@ pub struct Initialize<'info> {
     pub rent: Sysvar<'info, Rent>,
 }
 
-pub fn handler(ctx: Context<Initialize>) -> Result<()> {
+pub fn handler(ctx: Context<Initialize>, orca_pool: Pubkey) -> Result<()> {
     ctx.accounts.vault.bump = ctx.bumps.vault;
     ctx.accounts.vault.lp_vault_mint = ctx.accounts.lp_vault_mint.key();
+    ctx.accounts.vault.orca_pool = orca_pool;
     msg!("Vault singleton initialized");
     msg!("LP vault mint: {}", ctx.accounts.lp_vault_mint.key());
+    msg!("Orca pool: {}", orca_pool);
     Ok(())
 }

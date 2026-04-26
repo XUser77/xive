@@ -60,4 +60,8 @@ pub mod xive {
     pub fn create_user_state(ctx: Context<CreateUserState>) -> Result<()> {
         create_user_state::handler()
     }
+
+    pub fn return_collateral(ctx: Context<ReturnCollateral>, amount: u64) -> Result<()> {
+        return_collateral::handler(ctx, amount)
+    }
 }

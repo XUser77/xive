@@ -8,7 +8,10 @@
   },
   "dependencies": {
     "@anchor-lang/core": "^1.0.0",
-    "@solana/spl-token": "^0.4.14"
+    "@coral-xyz/anchor": "^0.29.0",
+    "@orca-so/whirlpools-sdk": "^0.13.0",
+    "@solana/spl-token": "^0.4.14",
+    "decimal.js": "^10.4.3"
   },
   "devDependencies": {
     "@types/bn.js": "^5.1.0",
