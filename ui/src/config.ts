@@ -14,6 +14,10 @@ export const VAULT_PROGRAM_ID = new PublicKey(
   "xva8xAjCCadQpphx5wCXnoLf5rkZuYu85Xxt88V3XnK",
 );
 
+export const COLLATERALS_PROGRAM_ID = new PublicKey(
+  "HmMqUcvc8WJAaFWafJNwEHGakhegGSzZeqsGcE8NCucx",
+);
+
 export const LP_VAULT_MINT = new PublicKey(
   "xLPy37ThnjtANeeiqR9N2YmjK4q7T8zFNfQteFZ5PCm",
 );

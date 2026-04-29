@@ -1,10 +1,12 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Burn, Mint, Token, TokenAccount, Transfer};
 
+use collaterals::{Collateral, COLLATERAL_SEED};
+
 use crate::error::ErrorCode;
 use crate::util::liquidation_threshold_xusd;
-use crate::{Collateral, Position, Xive};
-use crate::{COLLATERAL_SEED, VAULT_PROGRAM_ID, VAULT_SEED, XIVE_SEED};
+use crate::{Position, Xive};
+use crate::{VAULT_PROGRAM_ID, VAULT_SEED, XIVE_SEED};
 
 #[derive(Accounts)]
 pub struct Liquidate<'info> {
@@ -22,8 +24,8 @@ pub struct Liquidate<'info> {
     pub xive: Box<Account<'info, Xive>>,
 
     #[account(
-        mut,
         seeds = [COLLATERAL_SEED.as_bytes(), position.collateral_mint.as_ref()],
+        seeds::program = collaterals::ID,
         bump = collateral.bump,
         constraint = collateral.price > 0 @ ErrorCode::ZeroPrice,
     )]

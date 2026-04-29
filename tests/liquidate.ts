@@ -44,6 +44,7 @@ import { Percentage } from "@orca-so/common-sdk";
 import Decimal from "decimal.js";
 import { expect } from "chai";
 
+import type { Collaterals } from "../target/types/collaterals.js";
 import type { Vault } from "../target/types/vault.js";
 import type { Xive } from "../target/types/xive.js";
 import { rpcCall } from "./utils.js";
@@ -51,6 +52,7 @@ import { rpcCall } from "./utils.js";
 // ---------- constants (mirror programs/* and ui/src/config.ts) ----------
 const XIVE_PROGRAM_ID = new PublicKey("xiveHxXiqHUkFnX5DsmTsAbByTZS5bdGGpdZ9wpmNCR");
 const VAULT_PROGRAM_ID = new PublicKey("xva8xAjCCadQpphx5wCXnoLf5rkZuYu85Xxt88V3XnK");
+const COLLATERALS_PROGRAM_ID = new PublicKey("HmMqUcvc8WJAaFWafJNwEHGakhegGSzZeqsGcE8NCucx");
 const XUSD_MINT = new PublicKey("xusdSPQZr3PMbWNE4CcxVgezKL2UPcR74o45c6LWVF4");
 const LP_VAULT_MINT = new PublicKey("xLPy37ThnjtANeeiqR9N2YmjK4q7T8zFNfQteFZ5PCm");
 const USDC_MINT = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
@@ -77,7 +79,7 @@ function xivePda(): PublicKey {
 function collateralPda(mint: PublicKey): PublicKey {
   return PublicKey.findProgramAddressSync(
     [Buffer.from("collateral"), mint.toBuffer()],
-    XIVE_PROGRAM_ID,
+    COLLATERALS_PROGRAM_ID,
   )[0];
 }
 
@@ -267,6 +269,7 @@ describe("vault liquidation reproducer", () => {
   let connection: anchor.web3.Connection;
   let xiveProgram: Program<Xive>;
   let vaultProgram: Program<Vault>;
+  let collateralsProgram: Program<Collaterals>;
   let user: Keypair;
   let victimPosition: PublicKey;
 
@@ -284,8 +287,26 @@ describe("vault liquidation reproducer", () => {
     connection = provider.connection;
     xiveProgram = anchor.workspace.xive as Program<Xive>;
     vaultProgram = anchor.workspace.vault as Program<Vault>;
+    collateralsProgram = anchor.workspace.collaterals as Program<Collaterals>;
     user = Keypair.generate();
     console.log("[liq-test] user:", user.publicKey.toBase58());
+
+    // Other test files may have moved the WETH price during their own run. Reset to the
+    // default so this suite's LTV math is independent of execution order. The funding
+    // wallet pays here since `user` isn't funded yet (rent for the surfnet_setAccount
+    // payer only — collaterals.set_price needs a signer + 0 lamports for the call).
+    await rpcCall("surfnet_setAccount", [
+      user.publicKey.toBase58(),
+      { lamports: 100_000_000_000 },
+    ]);
+    await collateralsProgram.methods
+      .setPrice(new BN(3000))
+      .accounts({
+        payer: user.publicKey,
+        collateral: collateralPda(WETH_MINT),
+      } as never)
+      .signers([user])
+      .rpc();
   });
 
   it("funds the user with SOL, WETH, and USDC", async () => {
@@ -461,7 +482,7 @@ describe("vault liquidation reproducer", () => {
     // 0.1 WETH * $1000 = $100 collateral value vs $100 debt → 100% LTV > 95% liquidation threshold.
     // The collateral PDA seed depends on the account's own `mint` field, so the IDL
     // can't auto-derive it — cast to bypass the strict accounts() type.
-    await xiveProgram.methods
+    await collateralsProgram.methods
       .setPrice(new BN(1000))
       .accounts({
         payer: user.publicKey,

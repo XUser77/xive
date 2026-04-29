@@ -14,4 +14,3 @@ pub const XIVE_PROGRAM_ID: Pubkey = pubkey!("xiveHxXiqHUkFnX5DsmTsAbByTZS5bdGGpd
 
 #[constant]
 pub const XIVE_SEED: &str = "xive";
-

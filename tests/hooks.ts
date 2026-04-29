@@ -17,6 +17,8 @@ import {
   PoolUtil,
 } from "@orca-so/whirlpools-sdk";
 import Decimal from "decimal.js";
+import type { Collaterals } from "../target/types/collaterals.ts";
+import type { Fees } from "../target/types/fees.ts";
 import type { PegKeeper } from "../target/types/peg_keeper.ts";
 import type { Xive } from "../target/types/xive.ts";
 import type { Vault } from "../target/types/vault.js";
@@ -41,10 +43,12 @@ const COLLATERALS = {
 };
 
 const PROGRAMS: { name: string; so: string; keypair: string }[] = [
-  { name: "peg_keeper", so: "target/deploy/peg_keeper.so", keypair: "keys/peg-keeper-program.json" },
-  { name: "team",       so: "target/deploy/team.so",       keypair: "keys/team-program.json" },
-  { name: "vault",      so: "target/deploy/vault.so",      keypair: "keys/vault-program.json" },
-  { name: "xive",       so: "target/deploy/xive.so",       keypair: "keys/xive-program.json" },
+  { name: "collaterals", so: "target/deploy/collaterals.so", keypair: "keys/collaterals-program.json" },
+  { name: "fees",        so: "target/deploy/fees.so",        keypair: "keys/fees-program.json" },
+  { name: "peg_keeper",  so: "target/deploy/peg_keeper.so",  keypair: "keys/peg-keeper-program.json" },
+  { name: "team",        so: "target/deploy/team.so",        keypair: "keys/team-program.json" },
+  { name: "vault",       so: "target/deploy/vault.so",       keypair: "keys/vault-program.json" },
+  { name: "xive",        so: "target/deploy/xive.so",        keypair: "keys/xive-program.json" },
 ];
 
 const XUSD_MINT_KEY_PAIR = "keys/xusd-mint-keypair.json";
@@ -154,6 +158,15 @@ async function initPrograms(deployKeyPair: Keypair): Promise<void> {
     .rpc();
   log("Xive initialized");
 
+  log("Initializing fees...");
+  const feesProgram = anchor.workspace.fees as Program<Fees>;
+  await feesProgram.methods
+    .initialize()
+    .accounts({ payer: deployKeyPair.publicKey })
+    .signers([deployKeyPair])
+    .rpc();
+  log("Fees initialized");
+
   log("Initializing peg_keeper...");
   const pegKeeperProgram = anchor.workspace.pegKeeper as Program<PegKeeper>;
   const xusdMintAccountKeypair = getKeyPair(XUSD_MINT_KEY_PAIR);
@@ -186,14 +199,15 @@ async function initPrograms(deployKeyPair: Keypair): Promise<void> {
 }
 
 async function addCollaterals(deployKeyPair: Keypair): Promise<void> {
-  const xiveProgram = anchor.workspace.xive as Program<Xive>;
+  const collateralsProgram = anchor.workspace.collaterals as Program<Collaterals>;
   for (const token in COLLATERALS) {
     log(`Adding collateral ${token} (${COLLATERALS[token].tvl / 100.0} %)...`);
-    await xiveProgram.methods
-      .allowCollateral(
+    await collateralsProgram.methods
+      .updateCollateral(
         new anchor.BN(COLLATERALS[token].tvl),
         new anchor.BN(COLLATERALS[token].liqTvl),
-        new anchor.BN(COLLATERALS[token].price)
+        new anchor.BN(COLLATERALS[token].price),
+        true,
       )
       .accounts({
         payer: deployKeyPair.publicKey,

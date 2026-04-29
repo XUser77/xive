@@ -1,10 +1,12 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
 
+use collaterals::{Collateral, COLLATERAL_SEED};
+
 use crate::error::ErrorCode;
 use crate::util::max_loan_xusd;
-use crate::{Collateral, Position, Xive};
-use crate::{COLLATERAL_SEED, XIVE_SEED};
+use crate::{Position, Xive};
+use crate::XIVE_SEED;
 
 #[derive(Accounts)]
 pub struct WithdrawCollateral<'info> {
@@ -25,6 +27,7 @@ pub struct WithdrawCollateral<'info> {
 
     #[account(
         seeds = [COLLATERAL_SEED.as_bytes(), position.collateral_mint.as_ref()],
+        seeds::program = collaterals::ID,
         bump = collateral.bump,
         constraint = collateral.price > 0 @ ErrorCode::ZeroPrice,
     )]

@@ -21,18 +21,6 @@ pub mod xive {
         initialize::handler(ctx)
     }
 
-    pub fn allow_collateral(ctx: Context<AllowCollateral>, ltv: u64, liquidation_ltv: u64, price: u64) -> Result<()> {
-        allow_collateral::handler(ctx, ltv, liquidation_ltv, price)
-    }
-
-    pub fn disallow_collateral(ctx: Context<DisallowCollateral>) -> Result<()> {
-        disallow_collateral::handler(ctx)
-    }
-
-    pub fn set_price(ctx: Context<SetPrice>, price: u64) -> Result<()> {
-        set_price::handler(ctx, price)
-    }
-
     pub fn open_position(ctx: Context<OpenPosition>, collateral_amount: u64, loan_amount: u64) -> Result<()> {
         open_position::handler(ctx, collateral_amount, loan_amount)
     }
@@ -65,18 +53,10 @@ pub mod xive {
         return_collateral::handler(ctx, amount)
     }
 
-    pub fn init_lp_position(ctx: Context<InitLpPosition>) -> Result<()> {
-        init_lp_position::handler(ctx)
-    }
-
     pub fn flash_mint_for_liquidation(
         ctx: Context<FlashMintForLiquidation>,
         amount: u64,
     ) -> Result<()> {
         flash_mint_for_liquidation::handler(ctx, amount)
-    }
-
-    pub fn withdraw_fees(ctx: Context<WithdrawFees>) -> Result<()> {
-        withdraw_fees::handler(ctx)
     }
 }

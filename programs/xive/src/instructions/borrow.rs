@@ -2,10 +2,13 @@ use anchor_lang::prelude::*;
 use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token::{Mint, Token, TokenAccount};
 
+use collaterals::{Collateral, COLLATERAL_SEED};
+use fees::{Fees, FEES_SEED};
+
 use crate::error::ErrorCode;
 use crate::util::{commission_amount, max_loan_xusd};
-use crate::{Collateral, Position, Xive};
-use crate::{COLLATERAL_SEED, PEG_KEEPER_PROGRAM_ID, PEG_KEEPER_SEED, XIVE_SEED};
+use crate::{Position, Xive};
+use crate::{PEG_KEEPER_PROGRAM_ID, PEG_KEEPER_SEED, XIVE_SEED};
 
 #[derive(Accounts)]
 pub struct Borrow<'info> {
@@ -26,6 +29,7 @@ pub struct Borrow<'info> {
 
     #[account(
         seeds = [COLLATERAL_SEED.as_bytes(), position.collateral_mint.as_ref()],
+        seeds::program = collaterals::ID,
         bump = collateral.bump,
         constraint = collateral.price > 0 @ ErrorCode::ZeroPrice,
     )]
@@ -53,14 +57,21 @@ pub struct Borrow<'info> {
     )]
     pub user_xusd_ata: Box<Account<'info, TokenAccount>>,
 
-    /// xive PDA-owned XUSD ATA — accumulates borrow commissions until `withdraw_fees`.
+    #[account(
+        seeds = [FEES_SEED.as_bytes()],
+        seeds::program = fees::ID,
+        bump = fees.bump,
+    )]
+    pub fees: Box<Account<'info, Fees>>,
+
+    /// fees-PDA-owned XUSD ATA — accumulates borrow commissions until `fees::withdraw_fees`.
     #[account(
         init_if_needed,
         payer = user,
         associated_token::mint = xusd_mint,
-        associated_token::authority = xive,
+        associated_token::authority = fees,
     )]
-    pub xive_xusd_ata: Box<Account<'info, TokenAccount>>,
+    pub fees_xusd_ata: Box<Account<'info, TokenAccount>>,
 
     pub token_program: Program<'info, Token>,
     pub associated_token_program: Program<'info, AssociatedToken>,
@@ -115,7 +126,7 @@ pub fn handler(ctx: Context<Borrow>, amount: u64) -> Result<()> {
                 peg_keeper::cpi::accounts::MintXusd {
                     peg_keeper: ctx.accounts.peg_keeper.to_account_info(),
                     xusd_mint: ctx.accounts.xusd_mint.to_account_info(),
-                    recipient_token_account: ctx.accounts.xive_xusd_ata.to_account_info(),
+                    recipient_token_account: ctx.accounts.fees_xusd_ata.to_account_info(),
                     xive: ctx.accounts.xive.to_account_info(),
                     token_program: ctx.accounts.token_program.to_account_info(),
                 },

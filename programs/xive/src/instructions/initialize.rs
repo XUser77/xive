@@ -23,8 +23,6 @@ pub fn handler(ctx: Context<Initialize>) -> Result<()> {
     let xive = &mut ctx.accounts.xive;
     xive.bump = ctx.bumps.xive;
     xive.commission_bps = DEFAULT_COMMISSION_BPS;
-    xive.lp_position_mint = Pubkey::default();
-    xive.lp_whirlpool = Pubkey::default();
     msg!("Xive singleton initialized (commission_bps = {})", xive.commission_bps);
     Ok(())
 }

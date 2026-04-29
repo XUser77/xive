@@ -6,6 +6,8 @@
       <sourceFolder url="file://$MODULE_DIR$/programs/peg_keeper/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/programs/xive/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/programs/vault/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/programs/collaterals/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/programs/fees/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/programs/team/src" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
     </content>

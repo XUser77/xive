@@ -7,6 +7,7 @@ import {
 
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
+  COLLATERALS_PROGRAM_ID,
   PEG_KEEPER_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
   XIVE_PROGRAM_ID,
@@ -92,7 +93,7 @@ export function setPriceIx(args: {
     u64LE(price),
   ]);
   return new TransactionInstruction({
-    programId: XIVE_PROGRAM_ID,
+    programId: COLLATERALS_PROGRAM_ID,
     keys: [
       { pubkey: payer, isSigner: true, isWritable: false },
       { pubkey: collateralPda(collateralMint), isSigner: false, isWritable: true },

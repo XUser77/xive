@@ -23,6 +23,7 @@ import {
 import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 import { expect } from "chai";
 
+import type { Collaterals } from "../target/types/collaterals.js";
 import type { Vault } from "../target/types/vault.js";
 import type { Xive } from "../target/types/xive.js";
 import { rpcCall } from "./utils.js";
@@ -30,6 +31,7 @@ import { rpcCall } from "./utils.js";
 const XIVE_PROGRAM_ID = new PublicKey("xiveHxXiqHUkFnX5DsmTsAbByTZS5bdGGpdZ9wpmNCR");
 const VAULT_PROGRAM_ID = new PublicKey("xva8xAjCCadQpphx5wCXnoLf5rkZuYu85Xxt88V3XnK");
 const PEG_KEEPER_PROGRAM_ID = new PublicKey("xpeguefXy5MrgkbirCyuCCD5EfbUM5UfejdQduDcGz6");
+const COLLATERALS_PROGRAM_ID = new PublicKey("HmMqUcvc8WJAaFWafJNwEHGakhegGSzZeqsGcE8NCucx");
 const XUSD_MINT = new PublicKey("xusdSPQZr3PMbWNE4CcxVgezKL2UPcR74o45c6LWVF4");
 const WETH_MINT = new PublicKey("7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs");
 
@@ -55,7 +57,7 @@ function pegKeeperPda(): PublicKey {
 function collateralPda(mint: PublicKey): PublicKey {
   return PublicKey.findProgramAddressSync(
     [Buffer.from("collateral"), mint.toBuffer()],
-    XIVE_PROGRAM_ID,
+    COLLATERALS_PROGRAM_ID,
   )[0];
 }
 
@@ -73,6 +75,7 @@ describe("vault — flash_loan_liquidate", () => {
   let connection: anchor.web3.Connection;
   let xiveProgram: Program<Xive>;
   let vaultProgram: Program<Vault>;
+  let collateralsProgram: Program<Collaterals>;
   let user: Keypair;
   let victimPosition: PublicKey;
 
@@ -88,6 +91,7 @@ describe("vault — flash_loan_liquidate", () => {
     connection = provider.connection;
     xiveProgram = anchor.workspace.xive as Program<Xive>;
     vaultProgram = anchor.workspace.vault as Program<Vault>;
+    collateralsProgram = anchor.workspace.collaterals as Program<Collaterals>;
     user = Keypair.generate();
   });
 
@@ -130,7 +134,7 @@ describe("vault — flash_loan_liquidate", () => {
 
   it("drops the WETH price so the position is liquidatable", async () => {
     // 0.1 WETH * $1000 = $100 vs $100.5 debt → ~100% LTV > 95% liquidation threshold.
-    await xiveProgram.methods
+    await collateralsProgram.methods
       .setPrice(new BN(1000))
       .accounts({
         payer: user.publicKey,

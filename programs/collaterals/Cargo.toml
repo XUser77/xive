@@ -1,12 +1,12 @@
 [package]
-name = "xive"
+name = "collaterals"
 version = "0.1.0"
-description = "Created with Anchor"
+description = "Collateral registry — owns Collateral PDAs (allowance, ltv, price)"
 edition = "2021"
 
 [lib]
 crate-type = ["cdylib", "lib"]
-name = "xive"
+name = "collaterals"
 
 [features]
 default = []
@@ -14,18 +14,13 @@ cpi = ["no-entrypoint"]
 no-entrypoint = []
 no-idl = []
 no-log-ix-name = []
-idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build", "peg_keeper/idl-build", "collaterals/idl-build", "fees/idl-build"]
+idl-build = ["anchor-lang/idl-build"]
 anchor-debug = []
 custom-heap = []
 custom-panic = []
 
 [dependencies]
 anchor-lang = { version = "1.0.0", features = ["init-if-needed"] }
-anchor-spl = "1.0.0"
-peg_keeper = { path = "../peg_keeper", features = ["cpi"] }
-collaterals = { path = "../collaterals", features = ["cpi"] }
-fees = { path = "../fees", features = ["cpi"] }
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(target_os, values("solana"))'] }
-

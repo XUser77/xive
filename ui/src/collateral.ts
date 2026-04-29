@@ -1,7 +1,7 @@
 import { Connection, PublicKey } from "@solana/web3.js";
 import bs58 from "bs58";
 
-import { XIVE_PROGRAM_ID } from "./config";
+import { COLLATERALS_PROGRAM_ID } from "./config";
 
 const COLLATERAL_DISCRIMINATOR = new Uint8Array([
   123, 130, 234, 63, 255, 240, 255, 92,
@@ -51,7 +51,7 @@ function decodeCollateral(address: PublicKey, data: Buffer): Collateral {
 export async function fetchCollaterals(
   connection: Connection,
 ): Promise<Collateral[]> {
-  const accounts = await connection.getProgramAccounts(XIVE_PROGRAM_ID, {
+  const accounts = await connection.getProgramAccounts(COLLATERALS_PROGRAM_ID, {
     filters: [
       { dataSize: COLLATERAL_SIZE },
       {

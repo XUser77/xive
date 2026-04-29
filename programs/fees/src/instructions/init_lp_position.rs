@@ -5,11 +5,10 @@ use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token::Token;
 
 use crate::error::ErrorCode;
-use crate::{Xive, WHIRLPOOL_PROGRAM_ID, XIVE_SEED};
+use crate::{Fees, FEES_SEED, WHIRLPOOL_PROGRAM_ID};
 
-/// LP range for the xive-owned XUSD/USDC fee position. Hardcoded ±100 ticks around
-/// the stable peg, matching the SwapTab default — `withdraw_fees` will increase
-/// liquidity in this exact range every time it's called.
+/// LP range for the fees-owned XUSD/USDC position. Hardcoded ±100 ticks around the
+/// stable peg — `withdraw_fees` increases liquidity in this exact range every call.
 pub const LP_TICK_LOWER: i32 = -100;
 pub const LP_TICK_UPPER: i32 = 100;
 
@@ -23,11 +22,11 @@ pub struct InitLpPosition<'info> {
 
     #[account(
         mut,
-        seeds = [XIVE_SEED.as_bytes()],
-        bump = xive.bump,
-        constraint = xive.lp_position_mint == Pubkey::default() @ ErrorCode::LpPositionAlreadyInitialized,
+        seeds = [FEES_SEED.as_bytes()],
+        bump = fees.bump,
+        constraint = fees.lp_position_mint == Pubkey::default() @ ErrorCode::LpPositionAlreadyInitialized,
     )]
-    pub xive: Box<Account<'info, Xive>>,
+    pub fees: Box<Account<'info, Fees>>,
 
     /// CHECK: Orca XUSD/USDC whirlpool — used as-is by the open_position CPI.
     pub whirlpool: UncheckedAccount<'info>,
@@ -40,7 +39,7 @@ pub struct InitLpPosition<'info> {
     #[account(mut)]
     pub position: UncheckedAccount<'info>,
 
-    /// CHECK: ATA(xive, position_mint) — initialized by Orca's open_position handler.
+    /// CHECK: ATA(fees, position_mint) — initialized by Orca's open_position handler.
     #[account(mut)]
     pub position_token_account: UncheckedAccount<'info>,
 
@@ -55,7 +54,6 @@ pub struct InitLpPosition<'info> {
 }
 
 pub fn handler(ctx: Context<InitLpPosition>) -> Result<()> {
-    // Derive the Orca position PDA bump for the OpenPositionBumps arg.
     let (expected_position, position_bump) = Pubkey::find_program_address(
         &[b"position", ctx.accounts.position_mint.key().as_ref()],
         &WHIRLPOOL_PROGRAM_ID,
@@ -75,7 +73,7 @@ pub fn handler(ctx: Context<InitLpPosition>) -> Result<()> {
 
     let accounts = vec![
         AccountMeta::new(ctx.accounts.funder.key(), true),
-        AccountMeta::new_readonly(ctx.accounts.xive.key(), false), // owner — receives the NFT
+        AccountMeta::new_readonly(ctx.accounts.fees.key(), false), // owner — receives the NFT
         AccountMeta::new(ctx.accounts.position.key(), false),
         AccountMeta::new(ctx.accounts.position_mint.key(), true),
         AccountMeta::new(ctx.accounts.position_token_account.key(), false),
@@ -94,7 +92,7 @@ pub fn handler(ctx: Context<InitLpPosition>) -> Result<()> {
 
     let infos = [
         ctx.accounts.funder.to_account_info(),
-        ctx.accounts.xive.to_account_info(),
+        ctx.accounts.fees.to_account_info(),
         ctx.accounts.position.to_account_info(),
         ctx.accounts.position_mint.to_account_info(),
         ctx.accounts.position_token_account.to_account_info(),
@@ -108,14 +106,14 @@ pub fn handler(ctx: Context<InitLpPosition>) -> Result<()> {
 
     invoke(&ix, &infos)?;
 
-    let xive = &mut ctx.accounts.xive;
-    xive.lp_position_mint = ctx.accounts.position_mint.key();
-    xive.lp_whirlpool = ctx.accounts.whirlpool.key();
+    let fees = &mut ctx.accounts.fees;
+    fees.lp_position_mint = ctx.accounts.position_mint.key();
+    fees.lp_whirlpool = ctx.accounts.whirlpool.key();
 
     msg!(
         "LP position opened: mint={} pool={} ticks=[{}, {}]",
-        xive.lp_position_mint,
-        xive.lp_whirlpool,
+        fees.lp_position_mint,
+        fees.lp_whirlpool,
         LP_TICK_LOWER,
         LP_TICK_UPPER,
     );

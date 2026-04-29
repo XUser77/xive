@@ -3,10 +3,13 @@ use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
 use peg_keeper::{PegKeeper, XUSD_MINT};
 
+use collaterals::{Collateral, COLLATERAL_SEED};
+use fees::{Fees, FEES_SEED};
+
 use crate::error::ErrorCode;
 use crate::util::{commission_amount, max_loan_xusd};
-use crate::{Collateral, Position, UserCounter, Xive};
-use crate::{COLLATERAL_SEED, PEG_KEEPER_SEED, POSITION_SEED, USER_COUNTER_SEED, XIVE_SEED};
+use crate::{Position, UserCounter, Xive};
+use crate::{PEG_KEEPER_SEED, POSITION_SEED, USER_COUNTER_SEED, XIVE_SEED};
 
 #[derive(Accounts)]
 pub struct OpenPosition<'info> {
@@ -21,6 +24,7 @@ pub struct OpenPosition<'info> {
 
     #[account(
         seeds = [COLLATERAL_SEED.as_bytes(), collateral_mint.key().as_ref()],
+        seeds::program = collaterals::ID,
         bump = collateral.bump,
         constraint = collateral.allowed @ ErrorCode::CollateralNotAllowed,
         constraint = collateral.price > 0 @ ErrorCode::ZeroPrice,
@@ -53,14 +57,21 @@ pub struct OpenPosition<'info> {
     )]
     pub user_xusd_ata: Box<Account<'info, TokenAccount>>,
 
-    /// xive PDA-owned XUSD ATA — holds accumulated borrow commissions until `withdraw_fees`.
+    #[account(
+        seeds = [FEES_SEED.as_bytes()],
+        seeds::program = fees::ID,
+        bump = fees.bump,
+    )]
+    pub fees: Box<Account<'info, Fees>>,
+
+    /// fees-PDA-owned XUSD ATA — holds accumulated borrow commissions until `fees::withdraw_fees`.
     #[account(
         init_if_needed,
         payer = user,
         associated_token::mint = xusd_mint,
-        associated_token::authority = xive,
+        associated_token::authority = fees,
     )]
-    pub xive_xusd_ata: Box<Account<'info, TokenAccount>>,
+    pub fees_xusd_ata: Box<Account<'info, TokenAccount>>,
 
     #[account(
         seeds = [PEG_KEEPER_SEED.as_bytes()],
@@ -156,7 +167,7 @@ pub fn handler(ctx: Context<OpenPosition>, collateral_amount: u64, loan_amount: 
                 peg_keeper::cpi::accounts::MintXusd {
                     peg_keeper: ctx.accounts.peg_keeper.to_account_info(),
                     xusd_mint: ctx.accounts.xusd_mint.to_account_info(),
-                    recipient_token_account: ctx.accounts.xive_xusd_ata.to_account_info(),
+                    recipient_token_account: ctx.accounts.fees_xusd_ata.to_account_info(),
                     xive: ctx.accounts.xive.to_account_info(),
                     token_program: ctx.accounts.token_program.to_account_info(),
                 },
