@@ -17,6 +17,10 @@ const XIVE_PROGRAM_ID = new PublicKey("xiveHxXiqHUkFnX5DsmTsAbByTZS5bdGGpdZ9wpmN
 // Default WETH price set by the hooks setup (mirrors COLLATERALS.WETH.price in tests/hooks.ts).
 const WETH_DEFAULT_PRICE = 3000;
 
+// Mirrors programs/xive/src/constants.rs::DEFAULT_COMMISSION_BPS — fee on every borrow.
+const COMMISSION_BPS = 50n;
+const fee = (loan: bigint) => (loan * COMMISSION_BPS) / 10_000n;
+
 function getATA(owner: PublicKey, mint: PublicKey): PublicKey {
   const [ata] = PublicKey.findProgramAddressSync(
     [owner.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), mint.toBuffer()],
@@ -115,9 +119,11 @@ describe("xive — lending flow (surfpool mainnet fork)", () => {
 
     const pos = await xiveProgram.account.position.fetch(position0);
     expect(pos.collateralAmount.toString()).to.equal("100000");
-    expect(pos.loanAmount.toString()).to.equal("1000");
+    // User asked for 1000 XUSD; debt records the full debt = 1000 + 5 fee = 1005.
+    expect(pos.loanAmount.toString()).to.equal((1000n + fee(1000n)).toString());
 
     const xusd = await provider.connection.getTokenAccountBalance(userXusdAta);
+    // User receives the full requested amount.
     expect(xusd.value.amount).to.equal("1000");
   });
 
@@ -148,9 +154,12 @@ describe("xive — lending flow (surfpool mainnet fork)", () => {
       .rpc();
 
     const pos = await xiveProgram.account.position.fetch(position0);
-    expect(pos.loanAmount.toString()).to.equal("1500");
+    // Debt grows by 500 + fee(500) = 502. New debt = 1005 + 502 = 1507.
+    const expectedDebt = (1000n + fee(1000n)) + (500n + fee(500n));
+    expect(pos.loanAmount.toString()).to.equal(expectedDebt.toString());
 
     const xusd = await provider.connection.getTokenAccountBalance(userXusdAta);
+    // User already had 1000 from the first open and now receives the full extra 500.
     expect(xusd.value.amount).to.equal("1500");
   });
 
@@ -165,9 +174,12 @@ describe("xive — lending flow (surfpool mainnet fork)", () => {
       .rpc();
 
     const pos = await xiveProgram.account.position.fetch(position0);
-    expect(pos.loanAmount.toString()).to.equal("1000");
+    // Repaying 500 against debt 1507 → debt = 1007.
+    const expectedDebt = (1000n + fee(1000n)) + (500n + fee(500n)) - 500n;
+    expect(pos.loanAmount.toString()).to.equal(expectedDebt.toString());
 
     const xusd = await provider.connection.getTokenAccountBalance(userXusdAta);
+    // 1500 - 500 repaid.
     expect(xusd.value.amount).to.equal("1000");
   });
 

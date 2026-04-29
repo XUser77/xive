@@ -4,6 +4,13 @@ use anchor_lang::prelude::*;
 #[derive(InitSpace)]
 pub struct Xive {
     pub bump: u8,
+    /// Commission charged on borrowed XUSD, in basis points (10_000 = 100%).
+    pub commission_bps: u64,
+    /// Orca whirlpool position NFT mint owned by the xive PDA — destination for the LP slice
+    /// of `withdraw_fees`. Pubkey::default() means no LP position has been initialized yet.
+    pub lp_position_mint: Pubkey,
+    /// The whirlpool the lp_position belongs to (XUSD/USDC stable pool).
+    pub lp_whirlpool: Pubkey,
 }
 
 #[account]

@@ -31,6 +31,16 @@ pub fn max_loan_xusd(
     }
 }
 
+/// Commission to charge on a borrowed XUSD amount, in base units.
+///   fee = loan * commission_bps / 10_000  (rounded down)
+pub fn commission_amount(loan: u64, commission_bps: u64) -> u64 {
+    ((loan as u128)
+        .checked_mul(commission_bps as u128)
+        .unwrap()
+        .checked_div(10_000)
+        .unwrap()) as u64
+}
+
 /// Compute liquidation threshold (debt-in-XUSD level at which position is liquidatable).
 pub fn liquidation_threshold_xusd(
     collateral_amount: u64,

@@ -64,4 +64,19 @@ pub mod xive {
     pub fn return_collateral(ctx: Context<ReturnCollateral>, amount: u64) -> Result<()> {
         return_collateral::handler(ctx, amount)
     }
+
+    pub fn init_lp_position(ctx: Context<InitLpPosition>) -> Result<()> {
+        init_lp_position::handler(ctx)
+    }
+
+    pub fn flash_mint_for_liquidation(
+        ctx: Context<FlashMintForLiquidation>,
+        amount: u64,
+    ) -> Result<()> {
+        flash_mint_for_liquidation::handler(ctx, amount)
+    }
+
+    pub fn withdraw_fees(ctx: Context<WithdrawFees>) -> Result<()> {
+        withdraw_fees::handler(ctx)
+    }
 }

@@ -273,7 +273,10 @@ describe("vault liquidation reproducer", () => {
   // user.counter advances each open_position.
   // Funding position lands at counter=0 (victimPosition uses counter=1).
   const VICTIM_COLLATERAL_RAW = 10_000_000n; // 0.1 WETH (10^7, 8 decimals)
-  const VICTIM_DEBT_XUSD_RAW = 100_000_000n; // 100 XUSD (6 decimals)
+  // Amount the user *requests* (and receives). Recorded debt is request + commission.
+  const VICTIM_REQUEST_XUSD_RAW = 100_000_000n; // 100 XUSD (6 decimals)
+  const VICTIM_DEBT_XUSD_RAW =
+    VICTIM_REQUEST_XUSD_RAW + (VICTIM_REQUEST_XUSD_RAW * 50n) / 10_000n; // = 100_500_000
 
   before(async () => {
     provider = anchor.AnchorProvider.env();
@@ -328,6 +331,8 @@ describe("vault liquidation reproducer", () => {
       .rpc();
 
     const xusdBal = await connection.getTokenAccountBalance(ata(user.publicKey, XUSD_MINT));
+    // User receives the full requested amount; the 0.5% commission is added on top of the
+    // recorded debt (see programs/xive/src/instructions/open_position.rs).
     expect(xusdBal.value.amount).to.equal("5000000000");
   });
 
@@ -436,9 +441,9 @@ describe("vault liquidation reproducer", () => {
   });
 
   it("opens the victim position (small loan, normal LTV)", async () => {
-    // 0.1 WETH at $3000 with 90% LTV → max 270 XUSD. Borrow 100 XUSD.
+    // 0.1 WETH at $3000 with 90% LTV → max 270 XUSD. Borrow 100 XUSD (debt becomes 100.5).
     await xiveProgram.methods
-      .openPosition(new BN(VICTIM_COLLATERAL_RAW.toString()), new BN(VICTIM_DEBT_XUSD_RAW.toString()))
+      .openPosition(new BN(VICTIM_COLLATERAL_RAW.toString()), new BN(VICTIM_REQUEST_XUSD_RAW.toString()))
       .accounts({
         user: user.publicKey,
         collateralMint: WETH_MINT,

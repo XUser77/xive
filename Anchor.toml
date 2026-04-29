@@ -7,6 +7,7 @@ skip-lint = false
 
 [programs.localnet]
 peg_keeper = "xpeguefXy5MrgkbirCyuCCD5EfbUM5UfejdQduDcGz6"
+team = "GY9r4oMpnsQyw8xgi6ZNv68vuCB1gNA1cRCZjTn5aH7g"
 vault = "xva8xAjCCadQpphx5wCXnoLf5rkZuYu85Xxt88V3XnK"
 xive = "xiveHxXiqHUkFnX5DsmTsAbByTZS5bdGGpdZ9wpmNCR"
 

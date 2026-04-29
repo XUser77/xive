@@ -4,7 +4,7 @@ use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
 use peg_keeper::{PegKeeper, XUSD_MINT};
 
 use crate::error::ErrorCode;
-use crate::util::max_loan_xusd;
+use crate::util::{commission_amount, max_loan_xusd};
 use crate::{Collateral, Position, UserCounter, Xive};
 use crate::{COLLATERAL_SEED, PEG_KEEPER_SEED, POSITION_SEED, USER_COUNTER_SEED, XIVE_SEED};
 
@@ -53,6 +53,15 @@ pub struct OpenPosition<'info> {
     )]
     pub user_xusd_ata: Box<Account<'info, TokenAccount>>,
 
+    /// xive PDA-owned XUSD ATA — holds accumulated borrow commissions until `withdraw_fees`.
+    #[account(
+        init_if_needed,
+        payer = user,
+        associated_token::mint = xusd_mint,
+        associated_token::authority = xive,
+    )]
+    pub xive_xusd_ata: Box<Account<'info, TokenAccount>>,
+
     #[account(
         seeds = [PEG_KEEPER_SEED.as_bytes()],
         seeds::program = peg_keeper_program,
@@ -88,7 +97,14 @@ pub struct OpenPosition<'info> {
 pub fn handler(ctx: Context<OpenPosition>, collateral_amount: u64, loan_amount: u64) -> Result<()> {
     let collateral = &ctx.accounts.collateral;
 
+    // The user receives `loan_amount` XUSD; the commission is added on top of the recorded debt.
+    //   total_debt = loan_amount + fee  (fee = loan_amount * commission_bps / 10_000)
+    let fee = commission_amount(loan_amount, ctx.accounts.xive.commission_bps);
+    let total_debt = loan_amount.checked_add(fee).unwrap();
+
     // price = whole XUSD per whole collateral; ltv in bps (9000 = 90%).
+    // LTV is checked against the *recorded debt* (loan + fee) so the user can't end up
+    // above the LTV cap by the act of borrowing itself.
     let max_loan = max_loan_xusd(
         collateral_amount,
         collateral.price,
@@ -96,7 +112,7 @@ pub fn handler(ctx: Context<OpenPosition>, collateral_amount: u64, loan_amount: 
         ctx.accounts.collateral_mint.decimals,
     );
 
-    require!(loan_amount as u128 <= max_loan, ErrorCode::InsufficientCollateral);
+    require!(total_debt as u128 <= max_loan, ErrorCode::InsufficientCollateral);
 
     // Transfer collateral from user to vault
     token::transfer(
@@ -111,25 +127,44 @@ pub fn handler(ctx: Context<OpenPosition>, collateral_amount: u64, loan_amount: 
         collateral_amount,
     )?;
 
-    // CPI to peg_keeper: mint XUSD to user — xive PDA signs as both xive and authorized_minter
+    // CPI to peg_keeper: mint `loan_amount` to user, `fee` to xive's fee ATA.
     let bump = ctx.accounts.xive.bump;
     let seeds = &[XIVE_SEED.as_bytes(), &[bump]];
     let signer_seeds = &[&seeds[..]];
 
-    peg_keeper::cpi::mint_xusd(
-        CpiContext::new_with_signer(
-            ctx.accounts.peg_keeper_program.key(),
-            peg_keeper::cpi::accounts::MintXusd {
-                peg_keeper: ctx.accounts.peg_keeper.to_account_info(),
-                xusd_mint: ctx.accounts.xusd_mint.to_account_info(),
-                recipient_token_account: ctx.accounts.user_xusd_ata.to_account_info(),
-                xive: ctx.accounts.xive.to_account_info(),
-                token_program: ctx.accounts.token_program.to_account_info(),
-            },
-            signer_seeds,
-        ),
-        loan_amount,
-    )?;
+    if loan_amount > 0 {
+        peg_keeper::cpi::mint_xusd(
+            CpiContext::new_with_signer(
+                ctx.accounts.peg_keeper_program.key(),
+                peg_keeper::cpi::accounts::MintXusd {
+                    peg_keeper: ctx.accounts.peg_keeper.to_account_info(),
+                    xusd_mint: ctx.accounts.xusd_mint.to_account_info(),
+                    recipient_token_account: ctx.accounts.user_xusd_ata.to_account_info(),
+                    xive: ctx.accounts.xive.to_account_info(),
+                    token_program: ctx.accounts.token_program.to_account_info(),
+                },
+                signer_seeds,
+            ),
+            loan_amount,
+        )?;
+    }
+
+    if fee > 0 {
+        peg_keeper::cpi::mint_xusd(
+            CpiContext::new_with_signer(
+                ctx.accounts.peg_keeper_program.key(),
+                peg_keeper::cpi::accounts::MintXusd {
+                    peg_keeper: ctx.accounts.peg_keeper.to_account_info(),
+                    xusd_mint: ctx.accounts.xusd_mint.to_account_info(),
+                    recipient_token_account: ctx.accounts.xive_xusd_ata.to_account_info(),
+                    xive: ctx.accounts.xive.to_account_info(),
+                    token_program: ctx.accounts.token_program.to_account_info(),
+                },
+                signer_seeds,
+            ),
+            fee,
+        )?;
+    }
 
     // Record position
     let position = &mut ctx.accounts.position;
@@ -137,7 +172,7 @@ pub fn handler(ctx: Context<OpenPosition>, collateral_amount: u64, loan_amount: 
     position.user = ctx.accounts.user.key();
     position.collateral_mint = ctx.accounts.collateral_mint.key();
     position.collateral_amount = collateral_amount;
-    position.loan_amount = loan_amount;
+    position.loan_amount = total_debt;
 
     // Increment counter (used as nonce for next position PDA)
     let user_counter = &mut ctx.accounts.user_counter;
@@ -145,9 +180,11 @@ pub fn handler(ctx: Context<OpenPosition>, collateral_amount: u64, loan_amount: 
     user_counter.counter = user_counter.counter.checked_add(1).unwrap();
 
     msg!(
-        "Position opened: {} collateral → {} XUSD",
+        "Position opened: {} collateral → user gets {} XUSD, debt = {} ({} fee)",
         collateral_amount,
-        loan_amount
+        loan_amount,
+        total_debt,
+        fee,
     );
     Ok(())
 }

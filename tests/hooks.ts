@@ -42,6 +42,7 @@ const COLLATERALS = {
 
 const PROGRAMS: { name: string; so: string; keypair: string }[] = [
   { name: "peg_keeper", so: "target/deploy/peg_keeper.so", keypair: "keys/peg-keeper-program.json" },
+  { name: "team",       so: "target/deploy/team.so",       keypair: "keys/team-program.json" },
   { name: "vault",      so: "target/deploy/vault.so",      keypair: "keys/vault-program.json" },
   { name: "xive",       so: "target/deploy/xive.so",       keypair: "keys/xive-program.json" },
 ];

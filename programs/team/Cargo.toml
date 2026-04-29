@@ -1,12 +1,12 @@
 [package]
-name = "vault"
+name = "team"
 version = "0.1.0"
-description = "Created with Anchor"
+description = "Team treasury program — receives 80% of xive fees"
 edition = "2021"
 
 [lib]
 crate-type = ["cdylib", "lib"]
-name = "vault"
+name = "team"
 
 [features]
 default = []
@@ -14,16 +14,14 @@ cpi = ["no-entrypoint"]
 no-entrypoint = []
 no-idl = []
 no-log-ix-name = []
-idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build", "xive/idl-build", "peg_keeper/idl-build"]
+idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
 anchor-debug = []
 custom-heap = []
 custom-panic = []
 
 [dependencies]
-anchor-lang = { version = "1.0.0", features = ["init-if-needed"] }
+anchor-lang = "1.0.0"
 anchor-spl = "1.0.0"
-peg_keeper = { path = "../peg_keeper", features = ["cpi"] }
-xive = { path = "../xive", features = ["cpi"] }
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(target_os, values("solana"))'] }

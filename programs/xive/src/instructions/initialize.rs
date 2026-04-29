@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-use crate::{Xive, XIVE_SEED};
+use crate::{Xive, DEFAULT_COMMISSION_BPS, XIVE_SEED};
 
 #[derive(Accounts)]
 pub struct Initialize<'info> {
@@ -20,7 +20,11 @@ pub struct Initialize<'info> {
 }
 
 pub fn handler(ctx: Context<Initialize>) -> Result<()> {
-    ctx.accounts.xive.bump = ctx.bumps.xive;
-    msg!("Xive singleton initialized");
+    let xive = &mut ctx.accounts.xive;
+    xive.bump = ctx.bumps.xive;
+    xive.commission_bps = DEFAULT_COMMISSION_BPS;
+    xive.lp_position_mint = Pubkey::default();
+    xive.lp_whirlpool = Pubkey::default();
+    msg!("Xive singleton initialized (commission_bps = {})", xive.commission_bps);
     Ok(())
 }

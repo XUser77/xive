@@ -1,8 +1,9 @@
 use anchor_lang::prelude::*;
+use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token::{Mint, Token, TokenAccount};
 
 use crate::error::ErrorCode;
-use crate::util::max_loan_xusd;
+use crate::util::{commission_amount, max_loan_xusd};
 use crate::{Collateral, Position, Xive};
 use crate::{COLLATERAL_SEED, PEG_KEEPER_PROGRAM_ID, PEG_KEEPER_SEED, XIVE_SEED};
 
@@ -52,7 +53,18 @@ pub struct Borrow<'info> {
     )]
     pub user_xusd_ata: Box<Account<'info, TokenAccount>>,
 
+    /// xive PDA-owned XUSD ATA — accumulates borrow commissions until `withdraw_fees`.
+    #[account(
+        init_if_needed,
+        payer = user,
+        associated_token::mint = xusd_mint,
+        associated_token::authority = xive,
+    )]
+    pub xive_xusd_ata: Box<Account<'info, TokenAccount>>,
+
     pub token_program: Program<'info, Token>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
+    pub system_program: Program<'info, System>,
     pub peg_keeper_program: Program<'info, peg_keeper::program::PegKeeper>,
 }
 
@@ -62,7 +74,10 @@ pub fn handler(ctx: Context<Borrow>, amount: u64) -> Result<()> {
     let position = &mut ctx.accounts.position;
     let collateral = &ctx.accounts.collateral;
 
-    let new_loan = position.loan_amount.checked_add(amount).unwrap();
+    // The user receives `amount` XUSD; the commission is added on top of the recorded debt.
+    let fee = commission_amount(amount, ctx.accounts.xive.commission_bps);
+    let debt_increase = amount.checked_add(fee).unwrap();
+    let new_loan = position.loan_amount.checked_add(debt_increase).unwrap();
 
     let max_loan = max_loan_xusd(
         position.collateral_amount,
@@ -76,23 +91,47 @@ pub fn handler(ctx: Context<Borrow>, amount: u64) -> Result<()> {
     let seeds = &[XIVE_SEED.as_bytes(), &[bump]];
     let signer_seeds = &[&seeds[..]];
 
-    peg_keeper::cpi::mint_xusd(
-        CpiContext::new_with_signer(
-            PEG_KEEPER_PROGRAM_ID,
-            peg_keeper::cpi::accounts::MintXusd {
-                peg_keeper: ctx.accounts.peg_keeper.to_account_info(),
-                xusd_mint: ctx.accounts.xusd_mint.to_account_info(),
-                recipient_token_account: ctx.accounts.user_xusd_ata.to_account_info(),
-                xive: ctx.accounts.xive.to_account_info(),
-                token_program: ctx.accounts.token_program.to_account_info(),
-            },
-            signer_seeds,
-        ),
-        amount,
-    )?;
+    if amount > 0 {
+        peg_keeper::cpi::mint_xusd(
+            CpiContext::new_with_signer(
+                PEG_KEEPER_PROGRAM_ID,
+                peg_keeper::cpi::accounts::MintXusd {
+                    peg_keeper: ctx.accounts.peg_keeper.to_account_info(),
+                    xusd_mint: ctx.accounts.xusd_mint.to_account_info(),
+                    recipient_token_account: ctx.accounts.user_xusd_ata.to_account_info(),
+                    xive: ctx.accounts.xive.to_account_info(),
+                    token_program: ctx.accounts.token_program.to_account_info(),
+                },
+                signer_seeds,
+            ),
+            amount,
+        )?;
+    }
+
+    if fee > 0 {
+        peg_keeper::cpi::mint_xusd(
+            CpiContext::new_with_signer(
+                PEG_KEEPER_PROGRAM_ID,
+                peg_keeper::cpi::accounts::MintXusd {
+                    peg_keeper: ctx.accounts.peg_keeper.to_account_info(),
+                    xusd_mint: ctx.accounts.xusd_mint.to_account_info(),
+                    recipient_token_account: ctx.accounts.xive_xusd_ata.to_account_info(),
+                    xive: ctx.accounts.xive.to_account_info(),
+                    token_program: ctx.accounts.token_program.to_account_info(),
+                },
+                signer_seeds,
+            ),
+            fee,
+        )?;
+    }
 
     position.loan_amount = new_loan;
 
-    msg!("Borrowed {}, new loan {}", amount, position.loan_amount);
+    msg!(
+        "Borrowed {} XUSD to user (+{} fee), new debt {}",
+        amount,
+        fee,
+        position.loan_amount
+    );
     Ok(())
 }

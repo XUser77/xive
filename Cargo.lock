@@ -1989,6 +1989,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "team"
+version = "0.1.0"
+dependencies = [
+ "anchor-lang",
+ "anchor-spl",
+]
+
+[[package]]
 name = "thiserror"
 version = "1.0.69"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2158,6 +2166,7 @@ version = "0.1.0"
 dependencies = [
  "anchor-lang",
  "anchor-spl",
+ "peg_keeper",
  "xive",
 ]
 
