@@ -47,7 +47,7 @@ pub struct OpenPosition<'info> {
         associated_token::mint = collateral_mint,
         associated_token::authority = xive,
     )]
-    pub vault_collateral_ata: Box<Account<'info, TokenAccount>>,
+    pub xive_collateral_ata: Box<Account<'info, TokenAccount>>,
 
     #[account(
         init_if_needed,
@@ -131,7 +131,7 @@ pub fn handler(ctx: Context<OpenPosition>, collateral_amount: u64, loan_amount: 
             ctx.accounts.token_program.key(),
             Transfer {
                 from: ctx.accounts.user_collateral_ata.to_account_info(),
-                to: ctx.accounts.vault_collateral_ata.to_account_info(),
+                to: ctx.accounts.xive_collateral_ata.to_account_info(),
                 authority: ctx.accounts.user.to_account_info(),
             },
         ),

@@ -9,7 +9,7 @@ pub use constants::*;
 pub use instructions::*;
 pub use state::*;
 
-declare_id!("893XCpv5JsEmLEQvXE7wJ3k7idUBNVKQ5URDHVigchmU");
+declare_id!("xfeewAjbVVJkjXUaxQxSmWgLNrixEFMJN3oNhNxQvCY");
 
 #[program]
 pub mod fees {

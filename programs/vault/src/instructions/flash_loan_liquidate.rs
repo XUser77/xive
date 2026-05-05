@@ -113,7 +113,7 @@ pub fn handler(ctx: Context<FlashLoanLiquidate>) -> Result<()> {
             caller_xusd_ata: ctx.accounts.vault_xusd_ata.to_account_info(),
             collateral_mint: ctx.accounts.collateral_mint.to_account_info(),
             caller_collateral_ata: ctx.accounts.vault_collateral_ata.to_account_info(),
-            vault_collateral_ata: ctx.accounts.xive_collateral_ata.to_account_info(),
+            xive_collateral_ata: ctx.accounts.xive_collateral_ata.to_account_info(),
             token_program: ctx.accounts.token_program.to_account_info(),
         },
         signer_seeds,

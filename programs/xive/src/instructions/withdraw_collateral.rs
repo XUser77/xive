@@ -48,7 +48,7 @@ pub struct WithdrawCollateral<'info> {
         associated_token::mint = collateral_mint,
         associated_token::authority = xive,
     )]
-    pub vault_collateral_ata: Box<Account<'info, TokenAccount>>,
+    pub xive_collateral_ata: Box<Account<'info, TokenAccount>>,
 
     pub token_program: Program<'info, Token>,
 }
@@ -81,7 +81,7 @@ pub fn handler(ctx: Context<WithdrawCollateral>, amount: u64) -> Result<()> {
         CpiContext::new_with_signer(
             ctx.accounts.token_program.key(),
             Transfer {
-                from: ctx.accounts.vault_collateral_ata.to_account_info(),
+                from: ctx.accounts.xive_collateral_ata.to_account_info(),
                 to: ctx.accounts.user_collateral_ata.to_account_info(),
                 authority: ctx.accounts.xive.to_account_info(),
             },

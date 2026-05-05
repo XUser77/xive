@@ -102,22 +102,20 @@ pub fn handler(ctx: Context<Borrow>, amount: u64) -> Result<()> {
     let seeds = &[XIVE_SEED.as_bytes(), &[bump]];
     let signer_seeds = &[&seeds[..]];
 
-    if amount > 0 {
-        peg_keeper::cpi::mint_xusd(
-            CpiContext::new_with_signer(
-                PEG_KEEPER_PROGRAM_ID,
-                peg_keeper::cpi::accounts::MintXusd {
-                    peg_keeper: ctx.accounts.peg_keeper.to_account_info(),
-                    xusd_mint: ctx.accounts.xusd_mint.to_account_info(),
-                    recipient_token_account: ctx.accounts.user_xusd_ata.to_account_info(),
-                    xive: ctx.accounts.xive.to_account_info(),
-                    token_program: ctx.accounts.token_program.to_account_info(),
-                },
-                signer_seeds,
-            ),
-            amount,
-        )?;
-    }
+    peg_keeper::cpi::mint_xusd(
+        CpiContext::new_with_signer(
+            PEG_KEEPER_PROGRAM_ID,
+            peg_keeper::cpi::accounts::MintXusd {
+                peg_keeper: ctx.accounts.peg_keeper.to_account_info(),
+                xusd_mint: ctx.accounts.xusd_mint.to_account_info(),
+                recipient_token_account: ctx.accounts.user_xusd_ata.to_account_info(),
+                xive: ctx.accounts.xive.to_account_info(),
+                token_program: ctx.accounts.token_program.to_account_info(),
+            },
+            signer_seeds,
+        ),
+        amount,
+    )?;
 
     if fee > 0 {
         peg_keeper::cpi::mint_xusd(

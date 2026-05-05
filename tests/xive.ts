@@ -14,7 +14,7 @@ const ASSOCIATED_TOKEN_PROGRAM_ID = new PublicKey("ATokenGPvbdGVxr1b2hvZbsiqW5xW
 const WETH_MINT = new PublicKey("7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs");
 const XUSD_MINT = new PublicKey("xusdSPQZr3PMbWNE4CcxVgezKL2UPcR74o45c6LWVF4");
 const XIVE_PROGRAM_ID = new PublicKey("xiveHxXiqHUkFnX5DsmTsAbByTZS5bdGGpdZ9wpmNCR");
-const COLLATERALS_PROGRAM_ID = new PublicKey("HmMqUcvc8WJAaFWafJNwEHGakhegGSzZeqsGcE8NCucx");
+const COLLATERALS_PROGRAM_ID = new PublicKey("xcoL9qKXpLrXb67xNBzfsXboH8zsC9SorT9rES2viA3");
 
 // Default WETH price set by the hooks setup (mirrors COLLATERALS.WETH.price in tests/hooks.ts).
 const WETH_DEFAULT_PRICE = 3000;

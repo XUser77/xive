@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-declare_id!("GY9r4oMpnsQyw8xgi6ZNv68vuCB1gNA1cRCZjTn5aH7g");
+declare_id!("xtm3VMkqiNhP2rd74yZUzsXFZMyAJapmcP7HUSfwD4i");
 
 #[constant]
 pub const TEAM_SEED: &str = "team";

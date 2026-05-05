@@ -13,7 +13,7 @@ pub const USDC_MINT: Pubkey = pubkey!("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTD
 pub const WHIRLPOOL_PROGRAM_ID: Pubkey = pubkey!("whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc");
 
 #[constant]
-pub const TEAM_PROGRAM_ID: Pubkey = pubkey!("GY9r4oMpnsQyw8xgi6ZNv68vuCB1gNA1cRCZjTn5aH7g");
+pub const TEAM_PROGRAM_ID: Pubkey = pubkey!("xtm3VMkqiNhP2rd74yZUzsXFZMyAJapmcP7HUSfwD4i");
 
 #[constant]
 pub const TEAM_SEED: &str = "team";

@@ -41,9 +41,9 @@ import type { Xive } from "../target/types/xive.js";
 import { rpcCall } from "./utils.js";
 
 const XIVE_PROGRAM_ID = new PublicKey("xiveHxXiqHUkFnX5DsmTsAbByTZS5bdGGpdZ9wpmNCR");
-const FEES_PROGRAM_ID = new PublicKey("893XCpv5JsEmLEQvXE7wJ3k7idUBNVKQ5URDHVigchmU");
-const TEAM_PROGRAM_ID = new PublicKey("GY9r4oMpnsQyw8xgi6ZNv68vuCB1gNA1cRCZjTn5aH7g");
-const COLLATERALS_PROGRAM_ID = new PublicKey("HmMqUcvc8WJAaFWafJNwEHGakhegGSzZeqsGcE8NCucx");
+const FEES_PROGRAM_ID = new PublicKey("xfeewAjbVVJkjXUaxQxSmWgLNrixEFMJN3oNhNxQvCY");
+const TEAM_PROGRAM_ID = new PublicKey("xtm3VMkqiNhP2rd74yZUzsXFZMyAJapmcP7HUSfwD4i");
+const COLLATERALS_PROGRAM_ID = new PublicKey("xcoL9qKXpLrXb67xNBzfsXboH8zsC9SorT9rES2viA3");
 const XUSD_MINT = new PublicKey("xusdSPQZr3PMbWNE4CcxVgezKL2UPcR74o45c6LWVF4");
 const USDC_MINT = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
 const WETH_MINT = new PublicKey("7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs");

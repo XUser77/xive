@@ -6,10 +6,10 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-collaterals = "HmMqUcvc8WJAaFWafJNwEHGakhegGSzZeqsGcE8NCucx"
-fees = "893XCpv5JsEmLEQvXE7wJ3k7idUBNVKQ5URDHVigchmU"
+collaterals = "xcoL9qKXpLrXb67xNBzfsXboH8zsC9SorT9rES2viA3"
+fees = "xfeewAjbVVJkjXUaxQxSmWgLNrixEFMJN3oNhNxQvCY"
 peg_keeper = "xpeguefXy5MrgkbirCyuCCD5EfbUM5UfejdQduDcGz6"
-team = "GY9r4oMpnsQyw8xgi6ZNv68vuCB1gNA1cRCZjTn5aH7g"
+team = "xtm3VMkqiNhP2rd74yZUzsXFZMyAJapmcP7HUSfwD4i"
 vault = "xva8xAjCCadQpphx5wCXnoLf5rkZuYu85Xxt88V3XnK"
 xive = "xiveHxXiqHUkFnX5DsmTsAbByTZS5bdGGpdZ9wpmNCR"
 

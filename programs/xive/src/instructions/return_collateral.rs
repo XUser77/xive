@@ -38,7 +38,7 @@ pub struct ReturnCollateral<'info> {
         associated_token::mint = collateral_mint,
         associated_token::authority = xive,
     )]
-    pub vault_collateral_ata: Box<Account<'info, TokenAccount>>,
+    pub xive_collateral_ata: Box<Account<'info, TokenAccount>>,
 
     pub token_program: Program<'info, Token>,
 }
@@ -51,7 +51,7 @@ pub fn handler(ctx: Context<ReturnCollateral>, amount: u64) -> Result<()> {
             ctx.accounts.token_program.to_account_info().key(),
             Transfer {
                 from: ctx.accounts.caller_collateral_ata.to_account_info(),
-                to: ctx.accounts.vault_collateral_ata.to_account_info(),
+                to: ctx.accounts.xive_collateral_ata.to_account_info(),
                 authority: ctx.accounts.caller.to_account_info(),
             },
         ),

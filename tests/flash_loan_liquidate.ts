@@ -31,7 +31,7 @@ import { rpcCall } from "./utils.js";
 const XIVE_PROGRAM_ID = new PublicKey("xiveHxXiqHUkFnX5DsmTsAbByTZS5bdGGpdZ9wpmNCR");
 const VAULT_PROGRAM_ID = new PublicKey("xva8xAjCCadQpphx5wCXnoLf5rkZuYu85Xxt88V3XnK");
 const PEG_KEEPER_PROGRAM_ID = new PublicKey("xpeguefXy5MrgkbirCyuCCD5EfbUM5UfejdQduDcGz6");
-const COLLATERALS_PROGRAM_ID = new PublicKey("HmMqUcvc8WJAaFWafJNwEHGakhegGSzZeqsGcE8NCucx");
+const COLLATERALS_PROGRAM_ID = new PublicKey("xcoL9qKXpLrXb67xNBzfsXboH8zsC9SorT9rES2viA3");
 const XUSD_MINT = new PublicKey("xusdSPQZr3PMbWNE4CcxVgezKL2UPcR74o45c6LWVF4");
 const WETH_MINT = new PublicKey("7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs");
 

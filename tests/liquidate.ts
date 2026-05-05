@@ -52,7 +52,7 @@ import { rpcCall } from "./utils.js";
 // ---------- constants (mirror programs/* and ui/src/config.ts) ----------
 const XIVE_PROGRAM_ID = new PublicKey("xiveHxXiqHUkFnX5DsmTsAbByTZS5bdGGpdZ9wpmNCR");
 const VAULT_PROGRAM_ID = new PublicKey("xva8xAjCCadQpphx5wCXnoLf5rkZuYu85Xxt88V3XnK");
-const COLLATERALS_PROGRAM_ID = new PublicKey("HmMqUcvc8WJAaFWafJNwEHGakhegGSzZeqsGcE8NCucx");
+const COLLATERALS_PROGRAM_ID = new PublicKey("xcoL9qKXpLrXb67xNBzfsXboH8zsC9SorT9rES2viA3");
 const XUSD_MINT = new PublicKey("xusdSPQZr3PMbWNE4CcxVgezKL2UPcR74o45c6LWVF4");
 const LP_VAULT_MINT = new PublicKey("xLPy37ThnjtANeeiqR9N2YmjK4q7T8zFNfQteFZ5PCm");
 const USDC_MINT = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");

@@ -8,7 +8,7 @@ pub use constants::*;
 pub use instructions::*;
 pub use state::*;
 
-declare_id!("HmMqUcvc8WJAaFWafJNwEHGakhegGSzZeqsGcE8NCucx");
+declare_id!("xcoL9qKXpLrXb67xNBzfsXboH8zsC9SorT9rES2viA3");
 
 #[program]
 pub mod collaterals {

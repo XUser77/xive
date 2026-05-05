@@ -15,15 +15,15 @@ export const VAULT_PROGRAM_ID = new PublicKey(
 );
 
 export const COLLATERALS_PROGRAM_ID = new PublicKey(
-  "HmMqUcvc8WJAaFWafJNwEHGakhegGSzZeqsGcE8NCucx",
+  "xcoL9qKXpLrXb67xNBzfsXboH8zsC9SorT9rES2viA3",
 );
 
 export const FEES_PROGRAM_ID = new PublicKey(
-  "893XCpv5JsEmLEQvXE7wJ3k7idUBNVKQ5URDHVigchmU",
+  "xfeewAjbVVJkjXUaxQxSmWgLNrixEFMJN3oNhNxQvCY",
 );
 
 export const TEAM_PROGRAM_ID = new PublicKey(
-  "GY9r4oMpnsQyw8xgi6ZNv68vuCB1gNA1cRCZjTn5aH7g",
+  "xtm3VMkqiNhP2rd74yZUzsXFZMyAJapmcP7HUSfwD4i",
 );
 
 export const LP_VAULT_MINT = new PublicKey(
