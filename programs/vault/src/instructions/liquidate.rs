@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 use anchor_lang::solana_program::instruction::{AccountMeta, Instruction};
 use anchor_lang::solana_program::program::invoke_signed;
 use anchor_spl::associated_token::AssociatedToken;
-use anchor_spl::token::{Mint, Token, TokenAccount};
+use anchor_spl::token::{self, Burn, Mint, Token, TokenAccount};
 
 // sha256("global:two_hop_swap")[..8]
 const TWO_HOP_SWAP_DISC: [u8; 8] = [195, 96, 237, 108, 68, 162, 219, 230];
@@ -25,7 +25,7 @@ pub struct Liquidate<'info> {
     )]
     pub vault: Box<Account<'info, Vault>>,
 
-    // ---------- xive accounts (for both liquidate & return_collateral CPIs) ----------
+    // ---------- xive accounts (for liquidate / return_collateral / flash_mint CPIs) ----------
     pub xive_program: Program<'info, xive::program::Xive>,
 
     /// CHECK: xive singleton PDA — validated by xive CPI.
@@ -140,14 +140,25 @@ pub struct Liquidate<'info> {
     /// CHECK: pool 2 oracle PDA.
     pub oracle_two: UncheckedAccount<'info>,
 
+    // ---------- peg_keeper (only used when use_flash_mint = true) ----------
+    pub peg_keeper_program: Program<'info, peg_keeper::program::PegKeeper>,
+
+    /// CHECK: peg_keeper PDA — validated by peg_keeper CPI.
+    #[account(mut)]
+    pub peg_keeper: UncheckedAccount<'info>,
+
     // ---------- framework ----------
     pub token_program: Program<'info, Token>,
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub system_program: Program<'info, System>,
 }
 
-pub fn handler(ctx: Context<Liquidate>, a_to_b_one: bool, a_to_b_two: bool) -> Result<()> {
-    // Read position state *before* liquidating.
+pub fn handler(
+    ctx: Context<Liquidate>,
+    a_to_b_one: bool,
+    a_to_b_two: bool,
+    use_flash_mint: bool,
+) -> Result<()> {
     let (debt, seized) = read_position(&ctx.accounts.position)?;
     require!(debt > 0, ErrorCode::NoDebt);
     require!(seized > 0, ErrorCode::NoCollateral);
@@ -161,6 +172,26 @@ pub fn handler(ctx: Context<Liquidate>, a_to_b_one: bool, a_to_b_two: bool) -> R
     let bump = ctx.accounts.vault.bump;
     let seeds: &[&[u8]] = &[VAULT_SEED.as_bytes(), std::slice::from_ref(&bump)];
     let signer_seeds = &[seeds];
+
+    // --- 0. (flash) mint `debt` XUSD into vault's ATA so xive::liquidate can burn it ---
+    if use_flash_mint {
+        xive::cpi::flash_mint_for_liquidation(
+            CpiContext::new_with_signer(
+                ctx.accounts.xive_program.to_account_info().key(),
+                xive::cpi::accounts::FlashMintForLiquidation {
+                    caller: ctx.accounts.vault.to_account_info(),
+                    xive: ctx.accounts.xive_state.to_account_info(),
+                    xusd_mint: ctx.accounts.xusd_mint.to_account_info(),
+                    caller_xusd_ata: ctx.accounts.vault_xusd_ata.to_account_info(),
+                    peg_keeper: ctx.accounts.peg_keeper.to_account_info(),
+                    token_program: ctx.accounts.token_program.to_account_info(),
+                    peg_keeper_program: ctx.accounts.peg_keeper_program.to_account_info(),
+                },
+                signer_seeds,
+            ),
+            debt,
+        )?;
+    }
 
     // --- 1. xive::liquidate → vault burns debt XUSD, receives all collateral ---
     xive::cpi::liquidate(CpiContext::new_with_signer(
@@ -213,8 +244,26 @@ pub fn handler(ctx: Context<Liquidate>, a_to_b_one: bool, a_to_b_two: bool) -> R
         )?;
     }
 
+    // --- 4. (flash) burn `debt` XUSD to round-trip the flash mint — net supply change zero,
+    //         vault profit is exactly target_xusd - debt = bonus * debt, same as non-flash mode.
+    if use_flash_mint {
+        token::burn(
+            CpiContext::new_with_signer(
+                ctx.accounts.token_program.key(),
+                Burn {
+                    mint: ctx.accounts.xusd_mint.to_account_info(),
+                    from: ctx.accounts.vault_xusd_ata.to_account_info(),
+                    authority: ctx.accounts.vault.to_account_info(),
+                },
+                signer_seeds,
+            ),
+            debt,
+        )?;
+    }
+
     msg!(
-        "Liquidated: debt={} target_xusd={} seized={} consumed={} refund={}",
+        "Liquidated (flash={}): debt={} target_xusd={} seized={} consumed={} refund={}",
+        use_flash_mint,
         debt,
         target_xusd,
         seized,

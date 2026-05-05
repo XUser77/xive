@@ -27,11 +27,12 @@ pub mod vault {
         withdraw::handler(ctx, lp_amount)
     }
 
-    pub fn liquidate(ctx: Context<Liquidate>, a_to_b_one: bool, a_to_b_two: bool) -> Result<()> {
-        liquidate::handler(ctx, a_to_b_one, a_to_b_two)
-    }
-
-    pub fn flash_loan_liquidate(ctx: Context<FlashLoanLiquidate>) -> Result<()> {
-        flash_loan_liquidate::handler(ctx)
+    pub fn liquidate(
+        ctx: Context<Liquidate>,
+        a_to_b_one: bool,
+        a_to_b_two: bool,
+        use_flash_mint: bool,
+    ) -> Result<()> {
+        liquidate::handler(ctx, a_to_b_one, a_to_b_two, use_flash_mint)
     }
 }

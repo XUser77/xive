@@ -1,15 +1,17 @@
 /**
- * Reproducer for the vault.liquidate two-hop swap failure.
+ * End-to-end coverage for vault.liquidate in both modes:
+ *   - Normal: vault burns XUSD from its own reserves, recovers via swap.
+ *   - Flash:  vault flash-mints XUSD via peg_keeper, recovers via swap, then
+ *             burns the same amount it minted so net XUSD supply is unchanged.
  *
  * Walks a single fresh user through:
  *   1. funding (WETH + USDC + SOL via surfnet)
  *   2. xive.create_user_state
  *   3. opens a "funding" position to mint a large XUSD bag
- *   4. vault.deposit (so vault has XUSD to burn during liquidation)
+ *   4. vault.deposit (so vault has XUSD reserves for the normal-mode test)
  *   5. adds liquidity to the XUSD/USDC Orca pool
- *   6. opens a small "victim" position
- *   7. drops the WETH price so the victim is liquidatable
- *   8. vault.liquidate — final test, reproduces the bug
+ *   6. opens victim #1, drops price, liquidates with use_flash_mint=false
+ *   7. opens victim #2, drops price further, liquidates with use_flash_mint=true
  */
 import * as anchor from "@anchor-lang/core";
 import { Program, BN } from "@anchor-lang/core";
@@ -52,6 +54,7 @@ import { rpcCall } from "./utils.js";
 // ---------- constants (mirror programs/* and ui/src/config.ts) ----------
 const XIVE_PROGRAM_ID = new PublicKey("xiveHxXiqHUkFnX5DsmTsAbByTZS5bdGGpdZ9wpmNCR");
 const VAULT_PROGRAM_ID = new PublicKey("xva8xAjCCadQpphx5wCXnoLf5rkZuYu85Xxt88V3XnK");
+const PEG_KEEPER_PROGRAM_ID = new PublicKey("xpeguefXy5MrgkbirCyuCCD5EfbUM5UfejdQduDcGz6");
 const COLLATERALS_PROGRAM_ID = new PublicKey("xcoL9qKXpLrXb67xNBzfsXboH8zsC9SorT9rES2viA3");
 const XUSD_MINT = new PublicKey("xusdSPQZr3PMbWNE4CcxVgezKL2UPcR74o45c6LWVF4");
 const LP_VAULT_MINT = new PublicKey("xLPy37ThnjtANeeiqR9N2YmjK4q7T8zFNfQteFZ5PCm");
@@ -74,6 +77,13 @@ function vaultPda(): PublicKey {
 
 function xivePda(): PublicKey {
   return PublicKey.findProgramAddressSync([Buffer.from("xive")], XIVE_PROGRAM_ID)[0];
+}
+
+function pegKeeperPda(): PublicKey {
+  return PublicKey.findProgramAddressSync(
+    [Buffer.from("peg-keeper")],
+    PEG_KEEPER_PROGRAM_ID,
+  )[0];
 }
 
 function collateralPda(mint: PublicKey): PublicKey {
@@ -141,8 +151,9 @@ async function buildVaultLiquidateIx(args: {
   position: PublicKey;
   collateralMint: PublicKey;
   debt: bigint;
+  useFlashMint: boolean;
 }): Promise<TransactionInstruction> {
-  const { connection, payer, position, collateralMint, debt } = args;
+  const { connection, payer, position, collateralMint, debt, useFlashMint } = args;
   const vault = vaultPda();
   const xive = xivePda();
 
@@ -217,7 +228,7 @@ async function buildVaultLiquidateIx(args: {
 
   const data = Buffer.concat([
     LIQUIDATION_DISCRIMINATOR,
-    Buffer.from([quoteOne.aToB ? 1 : 0, quoteTwo.aToB ? 1 : 0]),
+    Buffer.from([quoteOne.aToB ? 1 : 0, quoteTwo.aToB ? 1 : 0, useFlashMint ? 1 : 0]),
   ]);
 
   return new TransactionInstruction({
@@ -255,6 +266,8 @@ async function buildVaultLiquidateIx(args: {
       { pubkey: quoteTwo.tickArray2, isSigner: false, isWritable: true },
       { pubkey: oracleOne, isSigner: false, isWritable: false },
       { pubkey: oracleTwo, isSigner: false, isWritable: false },
+      { pubkey: PEG_KEEPER_PROGRAM_ID, isSigner: false, isWritable: false },
+      { pubkey: pegKeeperPda(), isSigner: false, isWritable: true },
       { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
       { pubkey: ASSOCIATED_TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
       { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
@@ -492,13 +505,14 @@ describe("vault liquidation reproducer", () => {
       .rpc();
   });
 
-  it("liquidates the victim position via vault.liquidate", async () => {
+  it("liquidates the victim position via vault.liquidate (normal mode)", async () => {
     const ix = await buildVaultLiquidateIx({
       connection,
       payer: user.publicKey,
       position: victimPosition,
       collateralMint: WETH_MINT,
       debt: VICTIM_DEBT_XUSD_RAW,
+      useFlashMint: false,
     });
     // The full vault.liquidate path (ATA inits + xive.liquidate CPI + Orca TwoHopSwap +
     // xive.return_collateral CPI) doesn't fit in the default 200k CU budget.
@@ -510,5 +524,97 @@ describe("vault liquidation reproducer", () => {
 
     const pos = await xiveProgram.account.position.fetch(victimPosition);
     expect(pos.loanAmount.toString()).to.equal("0");
+  });
+
+  // ---------- flash-liquidation leg ----------
+  // Open a second victim, drop the price further to make it liquidatable, then run the
+  // unified liquidate ix with use_flash_mint=true. Vault must end up with the same
+  // bonus as normal mode while the XUSD it minted is fully burned at the end.
+  let flashVictimPosition: PublicKey;
+  // Borrow 50 XUSD against 0.1 WETH at $1000 (LTV 50%). Drop price to ~$520 → ~96.6% LTV
+  // (above the 95% liquidation threshold).
+  const FLASH_VICTIM_REQUEST_XUSD_RAW = 50_000_000n;
+  const FLASH_VICTIM_DEBT_XUSD_RAW =
+    FLASH_VICTIM_REQUEST_XUSD_RAW + (FLASH_VICTIM_REQUEST_XUSD_RAW * 50n) / 10_000n;
+
+  it("opens a second victim position at the current ($1000) WETH price", async () => {
+    await xiveProgram.methods
+      .openPosition(
+        new BN(VICTIM_COLLATERAL_RAW.toString()),
+        new BN(FLASH_VICTIM_REQUEST_XUSD_RAW.toString()),
+      )
+      .accounts({
+        user: user.publicKey,
+        collateralMint: WETH_MINT,
+      })
+      .signers([user])
+      .rpc();
+
+    flashVictimPosition = positionPda(user.publicKey, 2n); // counters: funding=0, victim1=1
+    const pos = await xiveProgram.account.position.fetch(flashVictimPosition);
+    expect(pos.loanAmount.toString()).to.equal(FLASH_VICTIM_DEBT_XUSD_RAW.toString());
+  });
+
+  it("drops the WETH price to push the second victim above the liquidation LTV", async () => {
+    await collateralsProgram.methods
+      .setPrice(new BN(520))
+      .accounts({
+        payer: user.publicKey,
+        collateral: collateralPda(WETH_MINT),
+      } as never)
+      .signers([user])
+      .rpc();
+  });
+
+  it("flash-liquidates the second victim (use_flash_mint=true)", async () => {
+    const vault = vaultPda();
+    const vaultXusdAta = ata(vault, XUSD_MINT);
+    const xusdSupplyBefore = BigInt(
+      (await connection.getTokenSupply(XUSD_MINT)).value.amount,
+    );
+    const vaultXusdBefore = BigInt(
+      (await connection.getTokenAccountBalance(vaultXusdAta)).value.amount,
+    );
+
+    const ix = await buildVaultLiquidateIx({
+      connection,
+      payer: user.publicKey,
+      position: flashVictimPosition,
+      collateralMint: WETH_MINT,
+      debt: FLASH_VICTIM_DEBT_XUSD_RAW,
+      useFlashMint: true,
+    });
+    // Flash mint + xive.liquidate + TwoHopSwap + return_collateral + final burn — heavier
+    // than the normal-mode call. Bump the CU budget accordingly.
+    const tx = new Transaction()
+      .add(ComputeBudgetProgram.setComputeUnitLimit({ units: 500_000 }))
+      .add(ix);
+    const sig = await provider.sendAndConfirm(tx, [user]);
+    console.log("[liq-test] flash-liquidate sig:", sig);
+
+    // Position fully closed (debt zeroed; refund collateral if any returned by Orca).
+    const pos = await xiveProgram.account.position.fetch(flashVictimPosition);
+    expect(pos.loanAmount.toString()).to.equal("0");
+
+    // Supply changes by exactly -debt: flash mint (+debt) and the final burn (-debt) cancel
+    // each other; the remaining -debt comes from xive::liquidate burning the caller_xusd_ata
+    // (the user's debt obligation). Same supply impact as the normal-mode liquidation.
+    const xusdSupplyAfter = BigInt(
+      (await connection.getTokenSupply(XUSD_MINT)).value.amount,
+    );
+    expect(xusdSupplyAfter).to.equal(xusdSupplyBefore - FLASH_VICTIM_DEBT_XUSD_RAW);
+
+    // Vault XUSD gained exactly the bonus: target_xusd - debt = debt * bonus_bps / 10000.
+    const vaultXusdAfter = BigInt(
+      (await connection.getTokenAccountBalance(vaultXusdAta)).value.amount,
+    );
+    const expectedBonus =
+      (FLASH_VICTIM_DEBT_XUSD_RAW * LIQUIDATION_BONUS_BPS) / 10_000n;
+    // Allow a tiny tolerance for Orca rounding on the exact-output two-hop swap.
+    const gain = vaultXusdAfter - vaultXusdBefore;
+    expect(gain >= expectedBonus - 10n && gain <= expectedBonus + 10n).to.equal(
+      true,
+      `expected vault XUSD gain ≈ ${expectedBonus}, got ${gain}`,
+    );
   });
 });
