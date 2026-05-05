@@ -4,7 +4,9 @@ import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
   BPF_UPGRADEABLE_LOADER_ID,
   COLLATERALS_PROGRAM_ID,
+  FEES_PROGRAM_ID,
   PEG_KEEPER_PROGRAM_ID,
+  TEAM_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
   VAULT_PROGRAM_ID,
   XIVE_PROGRAM_ID,
@@ -58,6 +60,20 @@ export function pegKeeperPda(): PublicKey {
   return PublicKey.findProgramAddressSync(
     [Buffer.from("peg-keeper")],
     PEG_KEEPER_PROGRAM_ID,
+  )[0];
+}
+
+export function feesPda(): PublicKey {
+  return PublicKey.findProgramAddressSync(
+    [Buffer.from("fees")],
+    FEES_PROGRAM_ID,
+  )[0];
+}
+
+export function teamPda(): PublicKey {
+  return PublicKey.findProgramAddressSync(
+    [Buffer.from("team")],
+    TEAM_PROGRAM_ID,
   )[0];
 }
 

@@ -16,6 +16,7 @@ import {
 import {
   ata,
   collateralPda,
+  feesPda,
   pegKeeperPda,
   positionPda,
   userCounterPda,
@@ -118,6 +119,7 @@ export function openPositionIx(args: {
   } = args;
 
   const xive = xivePda();
+  const fees = feesPda();
   const data = Buffer.concat([
     Buffer.from(DISCRIMINATOR_OPEN_POSITION),
     u64LE(collateralAmount),
@@ -134,6 +136,8 @@ export function openPositionIx(args: {
       { pubkey: ata(user, collateralMint), isSigner: false, isWritable: true },
       { pubkey: ata(xive, collateralMint), isSigner: false, isWritable: true },
       { pubkey: ata(user, XUSD_MINT), isSigner: false, isWritable: true },
+      { pubkey: fees, isSigner: false, isWritable: false },
+      { pubkey: ata(fees, XUSD_MINT), isSigner: false, isWritable: true },
       { pubkey: pegKeeperPda(), isSigner: false, isWritable: false },
       { pubkey: XUSD_MINT, isSigner: false, isWritable: true },
       { pubkey: userCounterPda(user), isSigner: false, isWritable: true },
@@ -173,6 +177,7 @@ export function borrowIx(args: {
   amount: bigint;
 }): TransactionInstruction {
   const { user, position, collateralMint, amount } = args;
+  const fees = feesPda();
   return new TransactionInstruction({
     programId: XIVE_PROGRAM_ID,
     keys: [
@@ -180,10 +185,15 @@ export function borrowIx(args: {
       { pubkey: xivePda(), isSigner: false, isWritable: false },
       { pubkey: position, isSigner: false, isWritable: true },
       { pubkey: collateralPda(collateralMint), isSigner: false, isWritable: false },
+      { pubkey: collateralMint, isSigner: false, isWritable: false },
       { pubkey: pegKeeperPda(), isSigner: false, isWritable: true },
       { pubkey: XUSD_MINT, isSigner: false, isWritable: true },
       { pubkey: ata(user, XUSD_MINT), isSigner: false, isWritable: true },
+      { pubkey: fees, isSigner: false, isWritable: false },
+      { pubkey: ata(fees, XUSD_MINT), isSigner: false, isWritable: true },
       { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+      { pubkey: ASSOCIATED_TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
       { pubkey: PEG_KEEPER_PROGRAM_ID, isSigner: false, isWritable: false },
     ],
     data: Buffer.concat([Buffer.from(DISCRIMINATOR_BORROW), u64LE(amount)]),

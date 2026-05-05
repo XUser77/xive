@@ -1,6 +1,6 @@
 import { PublicKey } from "@solana/web3.js";
 
-export const RPC_ENDPOINT = "https://xive.tima.kz:8899";
+export const RPC_ENDPOINT = "https://xusd.tima.kz:8899";
 
 export const XIVE_PROGRAM_ID = new PublicKey(
   "xiveHxXiqHUkFnX5DsmTsAbByTZS5bdGGpdZ9wpmNCR",
@@ -16,6 +16,14 @@ export const VAULT_PROGRAM_ID = new PublicKey(
 
 export const COLLATERALS_PROGRAM_ID = new PublicKey(
   "HmMqUcvc8WJAaFWafJNwEHGakhegGSzZeqsGcE8NCucx",
+);
+
+export const FEES_PROGRAM_ID = new PublicKey(
+  "893XCpv5JsEmLEQvXE7wJ3k7idUBNVKQ5URDHVigchmU",
+);
+
+export const TEAM_PROGRAM_ID = new PublicKey(
+  "GY9r4oMpnsQyw8xgi6ZNv68vuCB1gNA1cRCZjTn5aH7g",
 );
 
 export const LP_VAULT_MINT = new PublicKey(

@@ -3,16 +3,16 @@ import {
   ConnectionProvider,
   WalletProvider,
 } from "@solana/wallet-adapter-react";
-import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
 import { SolflareWalletAdapter } from "@solana/wallet-adapter-solflare";
 import { BackpackWalletAdapter } from "@solana/wallet-adapter-backpack";
 import { WalletAdapterNetwork } from "@solana/wallet-adapter-base";
 
 import { RPC_ENDPOINT } from "./config";
-
-import "@solana/wallet-adapter-react-ui/styles.css";
+import { ConnectModalProvider } from "./ui/ConnectButton";
 
 export function WalletProviders({ children }: { children: ReactNode }) {
+  // Phantom and other wallet-standard wallets auto-register; we add fallbacks
+  // for Solflare and Backpack which are still legacy-adapter based.
   const wallets = useMemo(
     () => [
       new SolflareWalletAdapter({ network: WalletAdapterNetwork.Devnet }),
@@ -22,12 +22,9 @@ export function WalletProviders({ children }: { children: ReactNode }) {
   );
 
   return (
-    <ConnectionProvider
-      endpoint={RPC_ENDPOINT}
-      config={{ commitment: "confirmed" }}
-    >
+    <ConnectionProvider endpoint={RPC_ENDPOINT} config={{ commitment: "confirmed" }}>
       <WalletProvider wallets={wallets} autoConnect>
-        <WalletModalProvider>{children}</WalletModalProvider>
+        <ConnectModalProvider>{children}</ConnectModalProvider>
       </WalletProvider>
     </ConnectionProvider>
   );

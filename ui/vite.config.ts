@@ -12,6 +12,9 @@ export default defineConfig({
       buffer: "buffer",
     },
   },
+  build: {
+    sourcemap: true,
+  },
   server: {
     port: 5173,
   },

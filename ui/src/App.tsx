@@ -1,67 +1,32 @@
-import { useCallback, useState } from "react";
+import { Navigate, Route, BrowserRouter, Routes } from "react-router-dom";
 
 import { WalletProviders } from "./WalletProviders";
-import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
-import { MainTab } from "./MainTab";
-import { Cheats } from "./Cheats";
-import { VaultTab } from "./VaultTab";
-import { SwapTab } from "./SwapTab";
-import { WalletBalances } from "./WalletBalances";
-import { RPC_ENDPOINT } from "./config";
-
-type Tab = "main" | "vault" | "swap" | "cheats";
+import { TxProvider } from "./hooks/useTxSender";
+import Landing from "./pages/Landing";
+import Dashboard from "./pages/Dashboard";
+import Borrow from "./pages/Borrow";
+import Earn from "./pages/Earn";
+import Manage from "./pages/Manage";
+import Admin from "./pages/Admin";
 
 export default function App() {
-  const [tab, setTab] = useState<Tab>("main");
-  const [balanceRefresh, setBalanceRefresh] = useState(0);
-  const bumpBalances = useCallback(() => setBalanceRefresh((k) => k + 1), []);
-
   return (
     <WalletProviders>
-      <div className="app">
-        <header className="topbar">
-          <div className="brand">
-            <h1>Xive</h1>
-            <span className="cluster">{RPC_ENDPOINT}</span>
-          </div>
-          <div className="actions">
-            <WalletMultiButton />
-            <WalletBalances refreshKey={balanceRefresh} />
-          </div>
-        </header>
-
-        <nav className="tabs">
-          <button
-            className={`tab ${tab === "main" ? "active" : ""}`}
-            onClick={() => setTab("main")}
-          >
-            Main
-          </button>
-          <button
-            className={`tab ${tab === "vault" ? "active" : ""}`}
-            onClick={() => setTab("vault")}
-          >
-            Vault
-          </button>
-          <button
-            className={`tab ${tab === "swap" ? "active" : ""}`}
-            onClick={() => setTab("swap")}
-          >
-            Swap
-          </button>
-          <button
-            className={`tab ${tab === "cheats" ? "active" : ""}`}
-            onClick={() => setTab("cheats")}
-          >
-            Cheats
-          </button>
-        </nav>
-
-        {tab === "main" && <MainTab onBalanceChange={bumpBalances} />}
-        {tab === "vault" && <VaultTab />}
-        {tab === "swap" && <SwapTab />}
-        {tab === "cheats" && <Cheats />}
-      </div>
+      <TxProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Landing />} />
+            <Route path="/app" element={<Dashboard />} />
+            <Route path="/app/borrow" element={<Borrow />} />
+            <Route path="/app/earn" element={<Earn />} />
+            <Route path="/app/positions/:id" element={<Manage />} />
+            <Route path="/app/admin" element={<Admin />} />
+            <Route path="/app/markets" element={<Navigate to="/app" replace />} />
+            <Route path="/app/activity" element={<Navigate to="/app" replace />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </BrowserRouter>
+      </TxProvider>
     </WalletProviders>
   );
 }
