@@ -17,12 +17,16 @@ import * as anchor from "@anchor-lang/core";
 import { Program, BN } from "@anchor-lang/core";
 import { AnchorProvider, Wallet } from "@coral-xyz/anchor";
 import {
+  AddressLookupTableAccount,
+  AddressLookupTableProgram,
   ComputeBudgetProgram,
   Keypair,
   PublicKey,
   SystemProgram,
   Transaction,
   TransactionInstruction,
+  TransactionMessage,
+  VersionedTransaction,
 } from "@solana/web3.js";
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
@@ -142,6 +146,83 @@ async function findCollateralUsdcPool(
   }
   if (!best) throw new Error(`no Orca pool found for ${mint.toBase58()}/USDC`);
   return best.pda;
+}
+
+/**
+ * The combined `vault.liquidate` ix references ~33 unique accounts — too many to fit in
+ * a legacy transaction (1232-byte cap). Build a fresh ALT containing every non-payer
+ * account and send the ix as a v0 transaction. Each LUT-referenced account costs 1 byte
+ * instead of 32, easily fitting the message under the limit.
+ */
+async function sendWithAlt(
+  provider: AnchorProvider,
+  payer: Keypair,
+  ixs: TransactionInstruction[],
+): Promise<string> {
+  const conn = provider.connection;
+
+  const seen = new Set<string>([payer.publicKey.toBase58()]);
+  const altAddresses: PublicKey[] = [];
+  const include = (pk: PublicKey) => {
+    const s = pk.toBase58();
+    if (seen.has(s)) return;
+    seen.add(s);
+    altAddresses.push(pk);
+  };
+  for (const ix of ixs) {
+    include(ix.programId);
+    for (const k of ix.keys) include(k.pubkey);
+  }
+
+  const recentSlot = await conn.getSlot();
+  const [createIx, lookupTable] = AddressLookupTableProgram.createLookupTable({
+    authority: payer.publicKey,
+    payer: payer.publicKey,
+    recentSlot,
+  });
+  // Each `extendLookupTable` ix carries addresses inline in its data (32 bytes each), so
+  // a single tx can fit only ~20 addresses before busting the 1232-byte cap. Send the
+  // create + each extend chunk as their own transactions.
+  await provider.sendAndConfirm(new Transaction().add(createIx), [payer]);
+  const CHUNK = 20;
+  for (let i = 0; i < altAddresses.length; i += CHUNK) {
+    await provider.sendAndConfirm(
+      new Transaction().add(
+        AddressLookupTableProgram.extendLookupTable({
+          payer: payer.publicKey,
+          authority: payer.publicKey,
+          lookupTable,
+          addresses: altAddresses.slice(i, i + CHUNK),
+        }),
+      ),
+      [payer],
+    );
+  }
+
+  // ALT becomes referenceable starting one slot after creation. Poll until visible.
+  let alt: AddressLookupTableAccount | null = null;
+  for (let i = 0; i < 50; i++) {
+    const resp = await conn.getAddressLookupTable(lookupTable);
+    if (resp.value && resp.value.state.addresses.length === altAddresses.length) {
+      alt = resp.value;
+      break;
+    }
+    await new Promise((r) => setTimeout(r, 100));
+  }
+  if (!alt) throw new Error("ALT not ready after polling");
+
+  const { blockhash } = await conn.getLatestBlockhash();
+  const msg = new TransactionMessage({
+    payerKey: payer.publicKey,
+    recentBlockhash: blockhash,
+    instructions: ixs,
+  }).compileToV0Message([alt]);
+  const tx = new VersionedTransaction(msg);
+  tx.sign([payer]);
+
+  const sig = await conn.sendRawTransaction(tx.serialize());
+  await conn.confirmTransaction(sig, "confirmed");
+  return sig;
 }
 
 // ---------- vault.liquidate ix builder (mirrors ui/src/vaultInstructions.ts) ----------
@@ -516,10 +597,10 @@ describe("vault liquidation reproducer", () => {
     });
     // The full vault.liquidate path (ATA inits + xive.liquidate CPI + Orca TwoHopSwap +
     // xive.return_collateral CPI) doesn't fit in the default 200k CU budget.
-    const tx = new Transaction()
-      .add(ComputeBudgetProgram.setComputeUnitLimit({ units: 400_000 }))
-      .add(ix);
-    const sig = await provider.sendAndConfirm(tx, [user]);
+    const sig = await sendWithAlt(provider, user, [
+      ComputeBudgetProgram.setComputeUnitLimit({ units: 400_000 }),
+      ix,
+    ]);
     console.log("[liq-test] liquidate sig:", sig);
 
     const pos = await xiveProgram.account.position.fetch(victimPosition);
@@ -586,10 +667,10 @@ describe("vault liquidation reproducer", () => {
     });
     // Flash mint + xive.liquidate + TwoHopSwap + return_collateral + final burn — heavier
     // than the normal-mode call. Bump the CU budget accordingly.
-    const tx = new Transaction()
-      .add(ComputeBudgetProgram.setComputeUnitLimit({ units: 500_000 }))
-      .add(ix);
-    const sig = await provider.sendAndConfirm(tx, [user]);
+    const sig = await sendWithAlt(provider, user, [
+      ComputeBudgetProgram.setComputeUnitLimit({ units: 500_000 }),
+      ix,
+    ]);
     console.log("[liq-test] flash-liquidate sig:", sig);
 
     // Position fully closed (debt zeroed; refund collateral if any returned by Orca).
