@@ -21,6 +21,7 @@ import { useUserData, rawToWhole, wholeToRaw } from "../hooks/useUserData";
 import { useTxSender } from "../hooks/useTxSender";
 import { setPriceIx } from "../xiveInstructions";
 import { surfnetSetAccount, surfnetSetTokenAccount } from "../surfnet";
+import { priceToUsd, usdToPrice } from "../collateral";
 
 export default function AdminPage() {
   const { connected } = useWallet();
@@ -83,7 +84,7 @@ function PriceSetter() {
       await send({
         title: 'Set oracle price',
         detailLines: [['Mint', `${KNOWN_MINTS[key]?.symbol ?? key.slice(0, 8)}`], ['Price', fmtUSD(value)]],
-        ixs: [setPriceIx({ payer: publicKey, collateralMint: mint, price: BigInt(Math.round(value)) })],
+        ixs: [setPriceIx({ payer: publicKey, collateralMint: mint, price: usdToPrice(value) })],
         onConfirmed: () => {
           refresh();
           setDrafts((d) => ({ ...d, [key]: '' }));
@@ -160,7 +161,7 @@ function PriceSetter() {
             <div>
               <div style={{ fontSize: 13.5, fontWeight: 500 }}>{symbol}</div>
               <div style={{ fontSize: 11, color: color.textMute, fontFamily: font.mono }}>
-                current ${Number(c.price).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                current ${priceToUsd(c.price).toLocaleString(undefined, { maximumFractionDigits: 2 })}
               </div>
             </div>
             <div
@@ -178,7 +179,7 @@ function PriceSetter() {
               <MonoInput
                 value={draft}
                 onChange={(v) => setDrafts((d) => ({ ...d, [key]: v }))}
-                placeholder={String(c.price)}
+                placeholder={priceToUsd(c.price).toString()}
                 fontSize={14}
               />
             </div>

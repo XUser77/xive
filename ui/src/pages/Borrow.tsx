@@ -24,6 +24,7 @@ import { KNOWN_MINTS, XUSD_DECIMALS } from "../config";
 import { useUserData, rawToWhole, wholeToRaw, balanceOf } from "../hooks/useUserData";
 import { useTxSender } from "../hooks/useTxSender";
 import { createUserStateIx, openPositionIx } from "../xiveInstructions";
+import { priceToUsd } from "../collateral";
 
 const COMMISSION_BPS = 50n; // mirrors xive's DEFAULT_COMMISSION_BPS
 
@@ -74,7 +75,7 @@ function BorrowFlow() {
   const decimals = selected ? KNOWN_MINTS[selected.mint.toBase58()]?.decimals ?? 8 : 8;
   const balance = selected ? balanceOf(balances, selected.mint.toBase58()) : undefined;
   const balanceWhole = balance ? rawToWhole(balance.rawBalance, balance.decimals) : 0;
-  const price = selected ? Number(selected.price) : 0;
+  const price = selected ? priceToUsd(selected.price) : 0;
   const maxLtvPct = selected ? Number(selected.ltv) / 100 : 0;
   const liqLtvPct = selected ? Number(selected.liquidationLtv) / 100 : 0;
 
@@ -204,7 +205,7 @@ function BorrowFlow() {
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <div style={{ fontSize: 13, fontFamily: font.mono }}>
-                      ${Number(c.price).toLocaleString(undefined, {
+                      ${priceToUsd(c.price).toLocaleString(undefined, {
                         minimumFractionDigits: 2,
                         maximumFractionDigits: 2,
                       })}

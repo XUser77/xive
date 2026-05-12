@@ -47,18 +47,23 @@ import {
 const DEPLOY_WALLET = path.join(PROJECT_ROOT, "keys/deploy-wallet.json");
 const TEST_WALLET = path.join(PROJECT_ROOT, "keys/test-wallet.json");
 
-const COLLATERALS = {
+/// Multiplier converting a whole-USD figure into the on-chain `price`
+/// field's 6-decimal representation. Mirrors `PRICE_DECIMALS` in
+/// `programs/collaterals/src/constants.rs`.
+export const PRICE_SCALE = 1_000_000;
+
+export const COLLATERALS = {
   WETH: {
     mint: "7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs",
     tvl: 9000, // 90%
     liqTvl: 9500, // 95%
-    price: 3000,
+    price: 3000 * PRICE_SCALE, // $3000.00
   },
   WBTC: {
     mint: "3NZ9JMVBmGAqocybic2c7LQCJScmgsAZ6vQqTDzcqmJh",
     tvl: 9000, // 90%
     liqTvl: 9500, // 95%
-    price: 70000,
+    price: 70_000 * PRICE_SCALE, // $70000.00
   },
 };
 
@@ -136,17 +141,59 @@ function saveProgramHash(programName: string, hash: string): void {
   fs.writeFileSync(hashFileFor(programName), hash);
 }
 
-function deployOne(p: { name: string; so: string; keypair: string }): void {
-  console.log(`  [hooks] Deploying ${p.name}...`);
-  const result = spawnSync(
-    "solana",
-    ["program", "deploy", "--url", RPC_URL, "--keypair", DEPLOY_WALLET, "--program-id", p.keypair, p.so],
-    { cwd: PROJECT_ROOT, stdio: "pipe", encoding: "utf8" },
-  );
-  if (result.status !== 0) {
-    throw new Error(`Deploy ${p.name} failed:\n${result.stdout}\n${result.stderr}`);
+/// Patterns we know are transient surfpool/CLI race conditions, not bugs in
+/// the program or genuine deploy failures. Re-running the deploy with a fresh
+/// buffer almost always clears them.
+const RETRYABLE_DEPLOY_ERRORS = [
+  /already been processed/i,
+  /Blockhash not found/i,
+  /Custom program error: 0x0/i, // BPF Loader: account already in use after partial recovery
+  /signature.*not.*found/i,
+];
+
+async function deployOne(p: { name: string; so: string; keypair: string }): Promise<void> {
+  const MAX_ATTEMPTS = 4;
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    const suffix = attempt > 1 ? ` (attempt ${attempt}/${MAX_ATTEMPTS})` : "";
+    console.log(`  [hooks] Deploying ${p.name}${suffix}...`);
+    // `--use-rpc`: surfpool has no real TPU/QUIC endpoint; force JSON-RPC.
+    // `--max-sign-attempts 10`: gives the CLI enough headroom to re-sign
+    //   individual write chunks whose blockhash aged out, but stays low
+    //   enough to avoid the "already processed" race that very high values
+    //   trigger.
+    const result = spawnSync(
+      "solana",
+      [
+        "program", "deploy",
+        "--url", RPC_URL,
+        "--keypair", DEPLOY_WALLET,
+        "--program-id", p.keypair,
+        "--use-rpc",
+        "--max-sign-attempts", "10",
+        p.so,
+      ],
+      { cwd: PROJECT_ROOT, stdio: "pipe", encoding: "utf8" },
+    );
+    if (result.status === 0) {
+      console.log(`  [hooks] Deployed ${p.name} (${pubKey(p.keypair)})`);
+      return;
+    }
+
+    const combined = `${result.stdout}\n${result.stderr}`;
+    const retryable =
+      attempt < MAX_ATTEMPTS &&
+      RETRYABLE_DEPLOY_ERRORS.some((re) => re.test(combined));
+    if (retryable) {
+      const firstLine = combined.split("\n").find((l) => l.trim().length > 0) ?? "";
+      const cooldownMs = 3_000 * attempt; // back off: 3s, 6s, 9s
+      console.log(
+        `  [hooks] ${p.name}: transient deploy failure, retrying in ${cooldownMs / 1000}s — ${firstLine}`,
+      );
+      await new Promise((r) => setTimeout(r, cooldownMs));
+      continue;
+    }
+    throw new Error(`Deploy ${p.name} failed:\n${combined}`);
   }
-  console.log(`  [hooks] Deployed ${p.name} (${pubKey(p.keypair)})`);
 }
 
 /**
@@ -184,7 +231,7 @@ async function deployChangedPrograms(): Promise<void> {
       console.log(`  [hooks] ${p.name}: first deploy — deploying`);
     }
 
-    deployOne(p);
+    await deployOne(p);
     saveProgramHash(p.name, localHash);
   }
 }

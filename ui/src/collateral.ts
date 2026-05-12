@@ -3,6 +3,22 @@ import bs58 from "bs58";
 
 import { COLLATERALS_PROGRAM_ID } from "./config";
 
+/// Must stay in sync with `programs/collaterals/src/constants.rs::PRICE_DECIMALS`.
+export const PRICE_DECIMALS = 6;
+export const PRICE_SCALE = 10 ** PRICE_DECIMALS;
+
+/// Convert raw 6-decimal price to a JS number (floating-point dollars).
+/// Safe for any price under ~$9e9 — well outside any real asset.
+export function priceToUsd(price: bigint): number {
+  return Number(price) / PRICE_SCALE;
+}
+
+/// Convert a user-typed dollar amount (possibly fractional) to the raw
+/// 6-decimal representation expected on chain.
+export function usdToPrice(usd: number): bigint {
+  return BigInt(Math.round(usd * PRICE_SCALE));
+}
+
 const COLLATERAL_DISCRIMINATOR = new Uint8Array([
   123, 130, 234, 63, 255, 240, 255, 92,
 ]);

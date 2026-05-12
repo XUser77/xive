@@ -1,7 +1,9 @@
 import { spawnSync } from "child_process";
 import fs from "node:fs";
 import * as anchor from "@anchor-lang/core";
+import { Program } from "@anchor-lang/core";
 import { Connection, PublicKey } from "@solana/web3.js";
+import type { Collaterals } from "../target/types/collaterals.ts";
 
 export const PROJECT_ROOT = process.cwd();
 export const RPC_URL = "http://127.0.0.1:8899";
@@ -109,4 +111,17 @@ export async function purgeProgramAccounts(
   );
 
   return { pdas: pdas.length, atas: atas.length };
+}
+
+/// Fetch the `Collateral` PDA (`["collateral", mint]`) for the given mint and
+/// return its deserialized fields.
+export async function getCollateral(
+  collateralsProgram: Program<Collaterals>,
+  collateralMint: PublicKey,
+) {
+  const [pda] = PublicKey.findProgramAddressSync(
+    [Buffer.from("collateral"), collateralMint.toBuffer()],
+    collateralsProgram.programId,
+  );
+  return collateralsProgram.account.collateral.fetch(pda);
 }

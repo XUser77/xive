@@ -1,13 +1,21 @@
+use collaterals::PRICE_DECIMALS;
 use peg_keeper::XUSD_DECIMALS;
 
 /// Compute max loan in XUSD base units for a given collateral position.
 ///
-/// `price` is treated as whole XUSD per whole collateral (the raw user-facing
-/// dollar price). `ltv_bps` is in basis points (e.g. 9000 = 90%).
+/// `price` is fixed-point USD per whole collateral, scaled by 10^PRICE_DECIMALS.
+/// `collateral_amount` is in raw base units of the collateral token.
+/// `ltv_bps` is in basis points (e.g. 9000 = 90%).
 ///
-/// Formula:
-///   max_loan = collateral_raw * price * ltv_bps / 10_000
-///              * 10^(XUSD_DECIMALS - collateral_decimals)
+/// Real-arithmetic formula:
+///   max_loan_real = (collateral_raw / 10^collateral_decimals)
+///                 * (price_raw / 10^PRICE_DECIMALS)
+///                 * (ltv_bps / 10_000)
+///   max_loan_raw  = max_loan_real * 10^XUSD_DECIMALS
+///
+/// Rearranged for integer math:
+///   max_loan_raw = collateral_raw * price * ltv_bps / 10_000
+///                  * 10^(XUSD_DECIMALS - collateral_decimals - PRICE_DECIMALS)
 pub fn max_loan_xusd(
     collateral_amount: u64,
     price: u64,
@@ -22,12 +30,14 @@ pub fn max_loan_xusd(
         .checked_div(10_000)
         .unwrap();
 
-    if collateral_decimals >= XUSD_DECIMALS {
-        let pow = 10u128.pow((collateral_decimals - XUSD_DECIMALS) as u32);
-        base.checked_div(pow).unwrap()
+    let net_shift: i32 = (XUSD_DECIMALS as i32)
+        - (collateral_decimals as i32)
+        - (PRICE_DECIMALS as i32);
+
+    if net_shift >= 0 {
+        base.checked_mul(10u128.pow(net_shift as u32)).unwrap()
     } else {
-        let pow = 10u128.pow((XUSD_DECIMALS - collateral_decimals) as u32);
-        base.checked_mul(pow).unwrap()
+        base.checked_div(10u128.pow((-net_shift) as u32)).unwrap()
     }
 }
 

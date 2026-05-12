@@ -21,7 +21,7 @@ import { Shell } from "../ui/Shell";
 import { ConnectButton } from "../ui/ConnectButton";
 import { KNOWN_MINTS, XUSD_DECIMALS } from "../config";
 import { useUserData, rawToWhole } from "../hooks/useUserData";
-import type { Collateral } from "../collateral";
+import { type Collateral, priceToUsd } from "../collateral";
 import type { Position } from "../positions";
 
 export default function DashboardPage() {
@@ -56,7 +56,7 @@ function Connected() {
       const decimals = KNOWN_MINTS[p.collateralMint.toBase58()]?.decimals ?? 8;
       const colWhole = rawToWhole(p.collateralAmount, decimals);
       const debtWhole = rawToWhole(p.loanAmount, XUSD_DECIMALS);
-      const colUsd = c ? colWhole * Number(c.price) : 0;
+      const colUsd = c ? colWhole * priceToUsd(c.price) : 0;
       const liqLtv = c ? Number(c.liquidationLtv) / 10_000 : 0.95;
       collateralUsd += colUsd;
       debtUsd += debtWhole;
@@ -253,7 +253,7 @@ function PositionsPanel({
           const decimals = KNOWN_MINTS[p.collateralMint.toBase58()]?.decimals ?? 8;
           const colWhole = rawToWhole(p.collateralAmount, decimals);
           const debtWhole = rawToWhole(p.loanAmount, XUSD_DECIMALS);
-          const price = c ? Number(c.price) : 0;
+          const price = c ? priceToUsd(c.price) : 0;
           const colUsd = colWhole * price;
           const ltv = colUsd > 0 ? Math.min(100, (debtWhole / colUsd) * 100) : 0;
           const maxLtv = c ? Number(c.ltv) / 100 : 80;
@@ -449,7 +449,7 @@ export function CollateralsCard({
               </div>
               <div style={{ textAlign: 'right', fontFamily: font.mono, fontSize: 13 }}>
                 <span style={{ color: color.textMute }}>$</span>
-                {Number(c.price).toLocaleString(undefined, {
+                {priceToUsd(c.price).toLocaleString(undefined, {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2,
                 })}

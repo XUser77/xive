@@ -54,7 +54,7 @@ import type { Collaterals } from "../target/types/collaterals.js";
 import type { Vault } from "../target/types/vault.js";
 import type { Xive } from "../target/types/xive.js";
 import { rpcCall } from "./utils.js";
-import { setupProtocol } from "./hooks.js";
+import { setupProtocol, PRICE_SCALE } from "./hooks.js";
 
 // ---------- constants (mirror programs/* and ui/src/config.ts) ----------
 const XIVE_PROGRAM_ID = new PublicKey("xiveHxXiqHUkFnX5DsmTsAbByTZS5bdGGpdZ9wpmNCR");
@@ -565,12 +565,12 @@ describe("vault liquidation reproducer", () => {
   });
 
   it("drops the WETH price so the victim is liquidatable", async () => {
-    // Bonus 5% means we must be above liq_ltv (95%). Set price = 1000 (was 3000).
+    // Bonus 5% means we must be above liq_ltv (95%). Set price = $1000 (was $3000).
     // 0.1 WETH * $1000 = $100 collateral value vs $100 debt → 100% LTV > 95% liquidation threshold.
     // The collateral PDA seed depends on the account's own `mint` field, so the IDL
     // can't auto-derive it — cast to bypass the strict accounts() type.
     await collateralsProgram.methods
-      .setPrice(new BN(1000))
+      .setPrice(new BN(1000 * PRICE_SCALE))
       .accounts({
         payer: user.publicKey,
         collateral: collateralPda(WETH_MINT),
@@ -631,7 +631,7 @@ describe("vault liquidation reproducer", () => {
 
   it("drops the WETH price to push the second victim above the liquidation LTV", async () => {
     await collateralsProgram.methods
-      .setPrice(new BN(520))
+      .setPrice(new BN(520 * PRICE_SCALE))
       .accounts({
         payer: user.publicKey,
         collateral: collateralPda(WETH_MINT),

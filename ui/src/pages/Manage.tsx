@@ -30,7 +30,7 @@ import {
   withdrawCollateralIx,
 } from "../xiveInstructions";
 import type { Position } from "../positions";
-import type { Collateral } from "../collateral";
+import { type Collateral, priceToUsd } from "../collateral";
 
 type TabKey = 'add' | 'withdraw' | 'borrow' | 'repay' | 'close';
 
@@ -144,7 +144,7 @@ function ManageInner({
   const brand = brandFor(symbol);
   const colWhole = rawToWhole(position.collateralAmount, decimals);
   const debtWhole = rawToWhole(position.loanAmount, XUSD_DECIMALS);
-  const price = Number(collateral.price);
+  const price = priceToUsd(collateral.price);
   const colUsd = colWhole * price;
   const maxLtv = Number(collateral.ltv) / 100;
   const liqLtv = Number(collateral.liquidationLtv) / 100;
