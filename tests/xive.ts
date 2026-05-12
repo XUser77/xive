@@ -7,6 +7,7 @@ import { expect } from "chai";
 import type { Collaterals } from "../target/types/collaterals.ts";
 import type { Xive } from "../target/types/xive.ts";
 import { rpcCall, getKeyPair, PROJECT_ROOT } from "./utils.js";
+import { setupProtocol } from "./hooks.js";
 
 const TOKEN_PROGRAM_ID = new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
 const ASSOCIATED_TOKEN_PROGRAM_ID = new PublicKey("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL");
@@ -14,10 +15,6 @@ const ASSOCIATED_TOKEN_PROGRAM_ID = new PublicKey("ATokenGPvbdGVxr1b2hvZbsiqW5xW
 const WETH_MINT = new PublicKey("7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs");
 const XUSD_MINT = new PublicKey("xusdSPQZr3PMbWNE4CcxVgezKL2UPcR74o45c6LWVF4");
 const XIVE_PROGRAM_ID = new PublicKey("xiveHxXiqHUkFnX5DsmTsAbByTZS5bdGGpdZ9wpmNCR");
-const COLLATERALS_PROGRAM_ID = new PublicKey("xcoL9qKXpLrXb67xNBzfsXboH8zsC9SorT9rES2viA3");
-
-// Default WETH price set by the hooks setup (mirrors COLLATERALS.WETH.price in tests/hooks.ts).
-const WETH_DEFAULT_PRICE = 3000;
 
 // Mirrors programs/xive/src/constants.rs::DEFAULT_COMMISSION_BPS — fee on every borrow.
 const COMMISSION_BPS = 50n;
@@ -41,14 +38,6 @@ function positionPda(user: PublicKey, counter: bigint): PublicKey {
   return pda;
 }
 
-function collateralPda(mint: PublicKey): PublicKey {
-  const [pda] = PublicKey.findProgramAddressSync(
-    [Buffer.from("collateral"), mint.toBuffer()],
-    COLLATERALS_PROGRAM_ID,
-  );
-  return pda;
-}
-
 describe("xive — lending flow (surfpool mainnet fork)", () => {
   let provider: anchor.AnchorProvider;
   let xiveProgram: Program<Xive>;
@@ -60,6 +49,11 @@ describe("xive — lending flow (surfpool mainnet fork)", () => {
   let userXusdAta: PublicKey;
 
   before(async () => {
+    // Per-file clean slate: wipes positions, user_counters, collateral PDAs,
+    // and all protocol-managed ATAs; restores the singletons and the default
+    // collateral registry (incl. WETH @ $3000). User-owned wallets/ATAs survive.
+    await setupProtocol();
+
     provider = anchor.AnchorProvider.env();
     anchor.setProvider(provider);
     xiveProgram = anchor.workspace.xive as Program<Xive>;
@@ -70,35 +64,28 @@ describe("xive — lending flow (surfpool mainnet fork)", () => {
     position1 = positionPda(testWallet.publicKey, 1n);
     userXusdAta = getATA(testWallet.publicKey, XUSD_MINT);
 
-    // Seed test wallet with WETH on the mainnet fork
+    // Seed test wallet with WETH on the mainnet fork. The XUSD ATA is reset so
+    // balance assertions below don't depend on residue from prior mocha runs.
     await getOrCreateAssociatedTokenAccount(
       provider.connection,
       testWallet,
       WETH_MINT,
-      testWallet.publicKey
+      testWallet.publicKey,
     );
     await rpcCall("surfnet_setTokenAccount", [
       testWallet.publicKey,
       WETH_MINT,
       { amount: 1_000_000 },
     ]);
+    await rpcCall("surfnet_setTokenAccount", [
+      testWallet.publicKey,
+      XUSD_MINT,
+      { amount: 0 },
+    ]);
 
-    await new Promise(resolve => setTimeout(resolve, 1000));
     const ata = await getAssociatedTokenAddress(WETH_MINT, testWallet.publicKey);
     const account = await getAccount(provider.connection, ata, "confirmed");
     expect(account.amount).to.equal(1_000_000n);
-
-    // Other test files (e.g. liquidate.ts) may have moved the WETH price during their own
-    // run — the global mochaHooks state is shared. Reset to the default so this suite's
-    // LTV math is independent of test execution order.
-    await collateralsProgram.methods
-      .setPrice(new BN(WETH_DEFAULT_PRICE))
-      .accounts({
-        payer: testWallet.publicKey,
-        collateral: collateralPda(WETH_MINT),
-      } as never)
-      .signers([testWallet])
-      .rpc();
   });
 
   it("create user state", async () => {

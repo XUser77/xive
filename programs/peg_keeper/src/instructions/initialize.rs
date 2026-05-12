@@ -17,8 +17,12 @@ pub struct Initialize<'info> {
     )]
     pub peg_keeper: Account<'info, PegKeeper>,
 
+    // `init_if_needed`: the mint is created on the very first run and reused
+    // afterwards. Per-test purges wipe the peg_keeper PDA but leave the mint
+    // intact (token program owns it), so re-running this instruction must be
+    // a no-op for the mint side.
     #[account(
-        init,
+        init_if_needed,
         payer = payer,
         address = XUSD_MINT,
         mint::decimals = XUSD_DECIMALS,

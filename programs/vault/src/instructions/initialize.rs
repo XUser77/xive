@@ -17,8 +17,11 @@ pub struct Initialize<'info> {
     )]
     pub vault: Account<'info, Vault>,
 
+    // `init_if_needed`: created on the first run and reused afterwards.
+    // Per-test purges wipe the vault PDA but leave the LP mint intact, so
+    // re-running this instruction must be a no-op for the mint side.
     #[account(
-        init,
+        init_if_needed,
         payer = payer,
         address = LP_VAULT_MINT,
         mint::decimals = LP_VAULT_DECIMALS,

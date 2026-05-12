@@ -54,6 +54,7 @@ import type { Collaterals } from "../target/types/collaterals.js";
 import type { Vault } from "../target/types/vault.js";
 import type { Xive } from "../target/types/xive.js";
 import { rpcCall } from "./utils.js";
+import { setupProtocol } from "./hooks.js";
 
 // ---------- constants (mirror programs/* and ui/src/config.ts) ----------
 const XIVE_PROGRAM_ID = new PublicKey("xiveHxXiqHUkFnX5DsmTsAbByTZS5bdGGpdZ9wpmNCR");
@@ -376,6 +377,10 @@ describe("vault liquidation reproducer", () => {
     VICTIM_REQUEST_XUSD_RAW + (VICTIM_REQUEST_XUSD_RAW * 50n) / 10_000n; // = 100_500_000
 
   before(async () => {
+    // Per-file clean slate — purge all protocol PDAs/ATAs and re-init singletons
+    // + collateral registry (WETH price reset to $3000 by addCollaterals).
+    await setupProtocol();
+
     provider = anchor.AnchorProvider.env();
     anchor.setProvider(provider);
     connection = provider.connection;
@@ -385,22 +390,10 @@ describe("vault liquidation reproducer", () => {
     user = Keypair.generate();
     console.log("[liq-test] user:", user.publicKey.toBase58());
 
-    // Other test files may have moved the WETH price during their own run. Reset to the
-    // default so this suite's LTV math is independent of execution order. The funding
-    // wallet pays here since `user` isn't funded yet (rent for the surfnet_setAccount
-    // payer only — collaterals.set_price needs a signer + 0 lamports for the call).
     await rpcCall("surfnet_setAccount", [
       user.publicKey.toBase58(),
       { lamports: 100_000_000_000 },
     ]);
-    await collateralsProgram.methods
-      .setPrice(new BN(3000))
-      .accounts({
-        payer: user.publicKey,
-        collateral: collateralPda(WETH_MINT),
-      } as never)
-      .signers([user])
-      .rpc();
   });
 
   it("funds the user with SOL, WETH, and USDC", async () => {

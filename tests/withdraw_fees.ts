@@ -39,6 +39,7 @@ import type { Collaterals } from "../target/types/collaterals.js";
 import type { Fees as FeesIdl } from "../target/types/fees.js";
 import type { Xive } from "../target/types/xive.js";
 import { rpcCall } from "./utils.js";
+import { setupProtocol } from "./hooks.js";
 
 const XIVE_PROGRAM_ID = new PublicKey("xiveHxXiqHUkFnX5DsmTsAbByTZS5bdGGpdZ9wpmNCR");
 const FEES_PROGRAM_ID = new PublicKey("xfeewAjbVVJkjXUaxQxSmWgLNrixEFMJN3oNhNxQvCY");
@@ -117,6 +118,10 @@ describe("fees — withdraw_fees", () => {
   const ACCRUED_FEE_RAW = (BORROW_RAW * COMMISSION_BPS) / 10_000n;
 
   before(async () => {
+    // Per-file clean slate — purge all protocol PDAs/ATAs and re-init singletons
+    // + collateral registry. WETH price comes back at the default $3000.
+    await setupProtocol();
+
     provider = anchor.AnchorProvider.env();
     anchor.setProvider(provider);
     connection = provider.connection;
@@ -126,20 +131,10 @@ describe("fees — withdraw_fees", () => {
     user = Keypair.generate();
     lpPositionMint = Keypair.generate();
 
-    // Reset WETH price — earlier suites may have moved it. We need a funded signer
-    // for set_price, so the user gets SOL up front (full token funding happens later).
     await rpcCall("surfnet_setAccount", [
       user.publicKey.toBase58(),
       { lamports: 100_000_000_000 },
     ]);
-    await collateralsProgram.methods
-      .setPrice(new BN(3000))
-      .accounts({
-        payer: user.publicKey,
-        collateral: collateralPda(WETH_MINT),
-      } as never)
-      .signers([user])
-      .rpc();
   });
 
   it("funds the user", async () => {
