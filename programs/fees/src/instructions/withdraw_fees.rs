@@ -5,11 +5,21 @@ use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
 
 use crate::error::ErrorCode;
-use crate::init_lp_position::{LP_TICK_LOWER, LP_TICK_UPPER};
 use crate::{
     Fees, FEES_SEED, TEAM_FEE_SHARE_BPS, TEAM_PROGRAM_ID, TEAM_SEED, USDC_MINT,
     WHIRLPOOL_PROGRAM_ID, XUSD_MINT,
 };
+
+/// sqrt_price(tick) * 2^64 for our hardcoded ±100-tick LP range, matching Orca's
+/// `tickIndexToSqrtPriceX64`. Must stay in sync with `LP_TICK_LOWER` / `LP_TICK_UPPER`
+/// in `init_lp_position.rs`.
+const SQRT_PRICE_LOWER_Q64: u128 = 18_354_745_142_194_483_561; // tick -100
+const SQRT_PRICE_UPPER_Q64: u128 = 18_539_204_128_674_405_812; // tick +100
+
+/// Byte offset of `sqrt_price` inside a Whirlpool account:
+///   8 (disc) + 32 (config) + 1 (bump) + 2 (tick_spacing) + 2 (fee_tier_index_seed)
+///   + 2 (fee_rate) + 2 (protocol_fee_rate) + 16 (liquidity) = 65
+const WHIRLPOOL_SQRT_PRICE_OFFSET: usize = 65;
 
 // sha256("global:swap")[..8]
 const SWAP_DISC: [u8; 8] = [248, 198, 158, 145, 225, 117, 135, 200];
@@ -239,9 +249,42 @@ fn increase_liquidity<'info>(
     max_usdc: u64,
     signer_seeds: &[&[&[u8]]],
 ) -> Result<()> {
-    // Conservative L estimate for the ±100-tick stable range — see notes in the original
-    // xive impl; safe lower bound, Orca will revert if either max is exceeded.
-    let liquidity_estimate = (max_xusd.min(max_usdc) as u128).saturating_mul(180);
+    // Read live sqrt_price from the pool. Orca's deposit math is:
+    //   amount_a = ceil(L * 2^64 * (sqrt_u - sqrt_p) / (sqrt_p * sqrt_u))
+    //   amount_b = ceil(L * (sqrt_p - sqrt_l) / 2^64)
+    // We invert each side to get the max L that keeps amount ≤ max, then take the min.
+    let sqrt_p: u128 = {
+        let data = ctx.accounts.whirlpool.try_borrow_data()?;
+        let bytes: [u8; 16] = data[WHIRLPOOL_SQRT_PRICE_OFFSET..WHIRLPOOL_SQRT_PRICE_OFFSET + 16]
+            .try_into()
+            .unwrap();
+        u128::from_le_bytes(bytes)
+    };
+
+    require!(
+        sqrt_p > SQRT_PRICE_LOWER_Q64 && sqrt_p < SQRT_PRICE_UPPER_Q64,
+        ErrorCode::PoolOutOfRange,
+    );
+
+    // L_a = floor(max_a * sqrt_p * sqrt_u / (2^64 * (sqrt_u - sqrt_p)))
+    // sqrt_p and sqrt_u are each ~2^64, so their product overflows u128. Shift each
+    // down by 32 first: the 2^64 in the denominator cancels the two >>32 shifts.
+    let l_from_a: u128 = {
+        let denom = SQRT_PRICE_UPPER_Q64 - sqrt_p;
+        let prod_shifted = (sqrt_p >> 32) * (SQRT_PRICE_UPPER_Q64 >> 32);
+        (max_xusd as u128).checked_mul(prod_shifted).unwrap() / denom
+    };
+
+    // L_b = floor(max_b * 2^64 / (sqrt_p - sqrt_l))
+    let l_from_b: u128 = {
+        let denom = sqrt_p - SQRT_PRICE_LOWER_Q64;
+        ((max_usdc as u128) << 64) / denom
+    };
+
+    let liquidity_estimate = l_from_a.min(l_from_b);
+    if liquidity_estimate == 0 {
+        return Ok(());
+    }
 
     let mut data = Vec::with_capacity(8 + 16 + 8 + 8);
     data.extend_from_slice(&INCREASE_LIQUIDITY_DISC);
@@ -284,7 +327,5 @@ fn increase_liquidity<'info>(
     ];
 
     invoke_signed(&ix, &infos, signer_seeds)?;
-    let _ = LP_TICK_LOWER;
-    let _ = LP_TICK_UPPER;
     Ok(())
 }

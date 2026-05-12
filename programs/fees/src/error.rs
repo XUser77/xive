@@ -12,4 +12,6 @@ pub enum ErrorCode {
     WhirlpoolMismatch,
     #[msg("No fees to withdraw")]
     NoFees,
+    #[msg("Pool sqrt_price is outside the LP tick range")]
+    PoolOutOfRange,
 }
