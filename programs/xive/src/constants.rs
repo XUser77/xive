@@ -17,3 +17,6 @@ pub const POSITION_SEED: &str = "pos";
 
 #[constant]
 pub const COLLATERAL_SEED: &str = "collateral";
+
+#[constant]
+pub const PRICE_TIMEOUT: i64 = 300;

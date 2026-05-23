@@ -4,6 +4,7 @@ use anchor_spl::token;
 use anchor_spl::token::{Mint, MintTo, Token, TokenAccount, TransferChecked};
 use crate::{ Position, POSITION_SEED, Wallet, WALLET_SEED, XUSD_MINT_ADDRESS, XIVE_SEED, COLLATERAL_SEED };
 use crate::errors::XiveError;
+use crate::instructions::process_position::{borrow_xusd, deposit_collateral};
 use crate::state::collateral::Collateral;
 use crate::state::xive::Xive;
 use crate::utils::{get_fee, get_position_bps};
@@ -81,8 +82,6 @@ pub struct OpenPosition<'info> {
 }
 
 pub fn open_position(ctx: Context<OpenPosition>, collateral_amount: u64, loan_amount: u64) -> Result<()> {
-    require!(collateral_amount > 0, XiveError::CollateralZero);
-    require!(loan_amount > 0, XiveError::LoanZero);
 
     let position = &mut ctx.accounts.position;
 
@@ -94,49 +93,26 @@ pub fn open_position(ctx: Context<OpenPosition>, collateral_amount: u64, loan_am
 
     ctx.accounts.wallet.index += 1;
 
-    let new_bps = get_position_bps(loan_amount, collateral_amount, ctx.accounts.collateral.price, ctx.accounts.collateral_mint.decimals)?;
-    require!(new_bps <= ctx.accounts.collateral.tvl, XiveError::LTVBreached);
-
-    token::transfer_checked(
-        CpiContext::new(
-            ctx.accounts.token_program.key(),
-            TransferChecked {
-                from: ctx.accounts.borrower_collateral_ata.to_account_info(),
-                to: ctx.accounts.program_collateral_ata.to_account_info(),
-                mint: ctx.accounts.collateral.to_account_info(),
-                authority: ctx.accounts.borrower.to_account_info(),
-            },
-        ),
+    deposit_collateral(
+        position,
+        ctx.accounts.token_program.key(),
+        ctx.accounts.borrower_collateral_ata.to_account_info(),
+        ctx.accounts.program_collateral_ata.to_account_info(),
+        &ctx.accounts.collateral_mint,
+        ctx.accounts.borrower.to_account_info(),
         collateral_amount,
+    )?;
+
+    borrow_xusd(
+        position,
+        &ctx.accounts.xive,
+        ctx.accounts.token_program.key(),
+        ctx.accounts.xusd_mint.to_account_info(),
+        ctx.accounts.borrower_xusd_ata.to_account_info(),
+        loan_amount,
+        &ctx.accounts.collateral,
         ctx.accounts.collateral_mint.decimals,
     )?;
-
-    position.collateral_amount = collateral_amount;
-    position.loan_amount = loan_amount;
-
-    // TODO: Check fee calculation
-    let fee = get_fee(position.loan_amount, ctx.accounts.xive.loan_fee)?;
-    let borrower_xusd = position.loan_amount.checked_sub(fee).ok_or(XiveError::MathOverflow)?;
-
-    let bump = ctx.accounts.xive.bump;
-    let signer_seeds: &[&[&[u8]]] = &[&[
-        XIVE_SEED.as_bytes(),
-        &[bump],
-    ]];
-    token::mint_to(
-        CpiContext::new_with_signer(
-            ctx.accounts.token_program.key(),
-            MintTo {
-                mint: ctx.accounts.xusd_mint.to_account_info(),
-                to: ctx.accounts.borrower_xusd_ata.to_account_info(),
-                authority: ctx.accounts.xive.to_account_info(),
-            },
-            signer_seeds
-        ),
-        borrower_xusd
-    )?;
-
-    // TODO: Mint fee
 
     Ok(())
 }

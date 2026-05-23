@@ -3,6 +3,7 @@ pub mod init_wallet;
 pub mod open_position;
 pub mod update_collateral;
 pub mod set_collateral_price;
+pub mod process_position;
 
 pub use initialize::*;
 pub use init_wallet::*;
