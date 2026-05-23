@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token;
-use anchor_spl::token::{ Mint, MintTo, Token, TokenAccount };
+use anchor_spl::token::{Mint, MintTo, Token, TokenAccount, TransferChecked};
 use crate::{ Position, POSITION_SEED, Wallet, WALLET_SEED, XUSD_MINT_ADDRESS, XIVE_SEED, COLLATERAL_SEED };
 use crate::errors::XiveError;
 use crate::state::collateral::Collateral;
@@ -39,6 +39,22 @@ pub struct OpenPosition<'info> {
         associated_token::authority = borrower,
     )]
     pub borrower_xusd_ata: Account<'info, TokenAccount>,
+
+    #[account(
+        init_if_needed,
+        payer = borrower,
+        associated_token::mint = collateral_mint,
+        associated_token::authority = borrower,
+    )]
+    pub borrower_collateral_ata: Account<'info, TokenAccount>,
+
+    #[account(
+        init_if_needed,
+        payer = borrower,
+        associated_token::mint = collateral_mint,
+        associated_token::authority = xive,
+    )]
+    pub program_collateral_ata: Account<'info, TokenAccount>,
 
     #[account(
         seeds = [COLLATERAL_SEED.as_bytes(), collateral_mint.key().as_ref()],
@@ -80,7 +96,19 @@ pub fn open_position(ctx: Context<OpenPosition>, collateral_amount: u64, loan_am
 
     // TODO: Check collateral TVL
 
-    // TODO: Transfer collateral from user to program
+    token::transfer_checked(
+        CpiContext::new(
+            ctx.accounts.token_program.key(),
+            TransferChecked {
+                from: ctx.accounts.borrower_collateral_ata.to_account_info(),
+                to: ctx.accounts.program_collateral_ata.to_account_info(),
+                mint: ctx.accounts.collateral.to_account_info(),
+                authority: ctx.accounts.borrower.to_account_info(),
+            },
+        ),
+        collateral_amount,
+        ctx.accounts.collateral_mint.decimals,
+    )?;
 
     position.collateral_amount = collateral_amount;
     position.loan_amount = loan_amount;
