@@ -1,13 +1,11 @@
 use anchor_lang::prelude::*;
 use anchor_spl::associated_token::AssociatedToken;
-use anchor_spl::token;
-use anchor_spl::token::{Mint, MintTo, Token, TokenAccount, TransferChecked};
+use anchor_spl::token::{ Mint, Token, TokenAccount };
 use crate::{ Position, POSITION_SEED, Wallet, WALLET_SEED, XUSD_MINT_ADDRESS, XIVE_SEED, COLLATERAL_SEED };
 use crate::errors::XiveError;
 use crate::instructions::process_position::{borrow_xusd, deposit_collateral};
 use crate::state::collateral::Collateral;
 use crate::state::xive::Xive;
-use crate::utils::{get_fee, get_position_bps};
 
 #[derive(Accounts)]
 pub struct OpenPosition<'info> {
@@ -50,8 +48,6 @@ pub struct OpenPosition<'info> {
     pub borrower_collateral_ata: Account<'info, TokenAccount>,
 
     #[account(
-        init_if_needed,
-        payer = borrower,
         associated_token::mint = collateral_mint,
         associated_token::authority = xive,
     )]
@@ -65,7 +61,8 @@ pub struct OpenPosition<'info> {
     pub collateral: Account<'info, Collateral>,
 
     #[account(
-        address = XUSD_MINT_ADDRESS
+        address = XUSD_MINT_ADDRESS,
+        mint::authority = xive,
     )]
     pub xusd_mint: Account<'info, Mint>,
 

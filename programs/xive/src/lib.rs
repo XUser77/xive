@@ -23,8 +23,8 @@ pub mod xive {
         instructions::initialize(ctx, loan_fee)
     }
 
-    pub fn update_collateral(ctx: Context<UpdateCollateral>, enabled: bool, tvl: u16, liquidation_tvl: u16) -> Result<()> {
-        instructions::update_collateral(ctx, enabled, tvl, liquidation_tvl)
+    pub fn update_collateral(ctx: Context<UpdateCollateral>, enabled: bool, ltv: u16, liquidation_ltv: u16) -> Result<()> {
+        instructions::update_collateral(ctx, enabled, ltv, liquidation_ltv)
     }
 
     pub fn set_collateral_price(ctx: Context<SetCollateralPrice>, price: u64) -> Result<()> {
@@ -33,5 +33,9 @@ pub mod xive {
 
     pub fn init_wallet(ctx: Context<InitWallet>) -> Result<()> {
         instructions::init_wallet(ctx)
+    }
+
+    pub fn open_position(ctx: Context<OpenPosition>, collateral_amount: u64, loan_amount: u64) -> Result<()> {
+        instructions::open_position(ctx, collateral_amount, loan_amount)
     }
 }

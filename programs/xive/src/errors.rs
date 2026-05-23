@@ -19,7 +19,10 @@ pub enum XiveError {
 
     #[msg("LTV breached")]
     LTVBreached,
-    
+
     #[msg("Collateral price is stale")]
     CollateralPriceStale,
+
+    #[msg("Invalid LTV")]
+    InvalidLtv,
 }

@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token;
-use anchor_spl::token::{ Mint, MintTo, TokenAccount, TransferChecked };
+use anchor_spl::token::{ Mint, MintTo, TransferChecked };
 use crate::{ Position };
 use crate::constants::{ PRICE_TIMEOUT, XIVE_SEED };
 use crate::errors::XiveError;
@@ -19,7 +19,7 @@ pub fn deposit_collateral<'info>(position: &mut Account<Position>,
 
     token::transfer_checked(
         CpiContext::new(
-            token_program,
+            token_program.key(),
             TransferChecked {
                 from: borrower_collateral_ata,
                 to: program_collateral_ata,
@@ -30,7 +30,9 @@ pub fn deposit_collateral<'info>(position: &mut Account<Position>,
         collateral_amount,
         collateral_mint.decimals,
     )?;
-    position.collateral_amount = collateral_amount;
+    position.collateral_amount = position.collateral_amount
+        .checked_add(collateral_amount)
+        .ok_or(XiveError::MathOverflow)?;
 
     Ok(())
 }
@@ -44,16 +46,24 @@ pub fn borrow_xusd<'info>(position: &mut Account<'info, Position>,
                           collateral: &Account<'info, Collateral>,
                           collateral_decimals: u8) -> Result<()> {
     require!(loan_amount > 0, XiveError::LoanZero);
-    require!(collateral.price_date + PRICE_TIMEOUT > Clock::get()?.unix_timestamp, XiveError::CollateralPriceStale);
 
-    let new_bps = get_position_bps(loan_amount, position.collateral_amount, collateral.price, collateral_decimals)?;
-    require!(new_bps <= collateral.tvl, XiveError::LTVBreached);
+    let now = Clock::get()?.unix_timestamp;
+    require!(
+      now.checked_sub(collateral.price_date).ok_or(XiveError::MathOverflow)? <= PRICE_TIMEOUT,
+      XiveError::CollateralPriceStale
+  );
 
-    position.loan_amount = loan_amount;
+    let total_loan = position.loan_amount
+        .checked_add(loan_amount)
+        .ok_or(XiveError::MathOverflow)?;
+    let new_bps = get_position_bps(total_loan, position.collateral_amount, collateral.price, collateral_decimals)?;
+    require!(new_bps <= collateral.ltv, XiveError::LTVBreached);
+
+    position.loan_amount = total_loan;
 
     // TODO: Check fee calculation
-    let fee = get_fee(position.loan_amount, xive.loan_fee)?;
-    let borrower_xusd = position.loan_amount.checked_sub(fee).ok_or(XiveError::MathOverflow)?;
+    let fee = get_fee(loan_amount, xive.loan_fee)?;
+    let borrower_xusd = loan_amount.checked_sub(fee).ok_or(XiveError::MathOverflow)?;
 
     let bump = xive.bump;
     let signer_seeds: &[&[&[u8]]] = &[&[
