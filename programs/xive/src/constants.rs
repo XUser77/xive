@@ -8,3 +8,6 @@ pub const XUSD_MINT_ADDRESS: Pubkey = pubkey!("xusdSPQZr3PMbWNE4CcxVgezKL2UPcR74
 
 #[constant]
 pub const XUSD_DECIMALS: u8 = 6;
+
+#[constant]
+pub const WALLET_SEED: &str = "wallet";
