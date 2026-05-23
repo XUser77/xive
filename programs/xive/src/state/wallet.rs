@@ -4,6 +4,6 @@ use anchor_lang::prelude::*;
 #[derive(InitSpace)]
 pub struct Wallet {
     pub bump: u8,
-    pub authority: Pubkey,
+    pub borrower: Pubkey,
     pub index: u64,
 }

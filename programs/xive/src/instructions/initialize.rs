@@ -1,8 +1,9 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, Token};
 
-use crate::{Xive, VAULT_DEPT_SEED};
+use crate::{Xive, XIVE_SEED};
 use crate::{XUSD_MINT_ADDRESS, XUSD_DECIMALS};
+use crate::errors::{XiveError};
 
 #[derive(Accounts)]
 pub struct Initialize<'info> {
@@ -13,7 +14,7 @@ pub struct Initialize<'info> {
         init,
         payer = payer,
         space = 8 + Xive::INIT_SPACE,
-        seeds = [VAULT_DEPT_SEED.as_bytes()],
+        seeds = [XIVE_SEED.as_bytes()],
         bump,
     )]
     pub xive: Account<'info, Xive>,
@@ -32,7 +33,10 @@ pub struct Initialize<'info> {
     pub token_program: Program<'info, Token>,
 }
 
-pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
+pub fn initialize(ctx: Context<Initialize>, loan_fee: u16) -> Result<()> {
+    require!(loan_fee < 10_000, XiveError::TooBigLoanFee);
+
     ctx.accounts.xive.bump = ctx.bumps.xive;
+    ctx.accounts.xive.loan_fee = loan_fee;
     Ok(())
 }

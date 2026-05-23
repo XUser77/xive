@@ -6,13 +6,13 @@ use crate::{Wallet, WALLET_SEED};
 pub struct InitWallet<'info> {
 
     #[account(mut)]
-    pub authority: Signer<'info>,
+    pub borrower: Signer<'info>,
 
     #[account(
         init,
-        payer = authority,
+        payer = borrower,
         space = 8 + Wallet::INIT_SPACE,
-        seeds = [WALLET_SEED.as_bytes(), authority.key().as_ref()],
+        seeds = [WALLET_SEED.as_bytes(), borrower.key().as_ref()],
         bump
     )]
     pub wallet: Account<'info, Wallet>,
@@ -23,6 +23,7 @@ pub struct InitWallet<'info> {
 
 pub fn init_wallet(ctx: Context<InitWallet>) -> Result<()> {
     ctx.accounts.wallet.bump = ctx.bumps.wallet;
+    ctx.accounts.wallet.borrower = ctx.accounts.borrower.key();
     ctx.accounts.wallet.index = 0;
     Ok(())
 }
