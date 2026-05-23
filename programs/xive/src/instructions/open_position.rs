@@ -6,7 +6,7 @@ use crate::{ Position, POSITION_SEED, Wallet, WALLET_SEED, XUSD_MINT_ADDRESS, XI
 use crate::errors::XiveError;
 use crate::state::collateral::Collateral;
 use crate::state::xive::Xive;
-use crate::utils::{ get_fee };
+use crate::utils::{get_fee, get_position_bps};
 
 #[derive(Accounts)]
 pub struct OpenPosition<'info> {
@@ -94,7 +94,8 @@ pub fn open_position(ctx: Context<OpenPosition>, collateral_amount: u64, loan_am
 
     ctx.accounts.wallet.index += 1;
 
-    // TODO: Check collateral TVL
+    let new_bps = get_position_bps(loan_amount, collateral_amount, ctx.accounts.collateral.price, ctx.accounts.collateral_mint.decimals)?;
+    require!(new_bps <= ctx.accounts.collateral.tvl, XiveError::LTVBreached);
 
     token::transfer_checked(
         CpiContext::new(

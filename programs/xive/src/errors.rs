@@ -16,4 +16,7 @@ pub enum XiveError {
 
     #[msg("Collateral disabled")]
     CollateralDisabled,
+
+    #[msg("LTV breached")]
+    LTVBreached,
 }
