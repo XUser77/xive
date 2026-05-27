@@ -8,6 +8,7 @@ pub mod deposit;
 pub mod withdraw;
 pub mod borrow;
 pub mod repay;
+pub mod close_position;
 
 pub use initialize::*;
 pub use init_wallet::*;
@@ -18,3 +19,4 @@ pub use deposit::*;
 pub use withdraw::*;
 pub use borrow::*;
 pub use repay::*;
+pub use close_position::*;

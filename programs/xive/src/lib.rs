@@ -54,4 +54,8 @@ pub mod xive {
     pub fn repay(ctx: Context<Repay>, loan_amount: u64) -> Result<()> {
         instructions::repay(ctx, loan_amount)
     }
+
+    pub fn close_position(ctx: Context<ClosePosition>) -> Result<()> {
+        instructions::close_position(ctx)
+    }
 }

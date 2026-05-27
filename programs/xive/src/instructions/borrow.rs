@@ -55,6 +55,7 @@ pub struct Borrow<'info> {
 }
 
 pub fn borrow(ctx: Context<Borrow>, loan_amount: u64) -> Result<()> {
+    require!(ctx.accounts.position.close_date == 0, XiveError::PositionClosed);
 
     borrow_xusd(
         &mut ctx.accounts.position,

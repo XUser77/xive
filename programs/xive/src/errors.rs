@@ -31,4 +31,7 @@ pub enum XiveError {
 
     #[msg("Too much return")]
     TooMuchReturn,
+
+    #[msg("Position closed")]
+    PositionClosed,
 }

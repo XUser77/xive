@@ -2,6 +2,7 @@ use anchor_lang::prelude::*;
 use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token::{Mint, Token, TokenAccount};
 use crate::{Position, POSITION_SEED, XIVE_SEED, Xive };
+use crate::errors::XiveError;
 use crate::instructions::process_position::deposit_collateral;
 
 #[derive(Accounts)]
@@ -49,6 +50,7 @@ pub struct Deposit<'info> {
 }
 
 pub fn deposit(ctx: Context<Deposit>, collateral_amount: u64) -> Result<()> {
+    require!(ctx.accounts.position.close_date == 0, XiveError::PositionClosed);
 
     deposit_collateral(
         &mut ctx.accounts.position,
