@@ -25,4 +25,10 @@ pub enum XiveError {
 
     #[msg("Invalid LTV")]
     InvalidLtv,
+
+    #[msg("Insufficient collateral in position")]
+    InsufficientCollateral,
+
+    #[msg("Too much return")]
+    TooMuchReturn,
 }

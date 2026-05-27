@@ -38,4 +38,20 @@ pub mod xive {
     pub fn open_position(ctx: Context<OpenPosition>, collateral_amount: u64, loan_amount: u64) -> Result<()> {
         instructions::open_position(ctx, collateral_amount, loan_amount)
     }
+
+    pub fn deposit(ctx: Context<Deposit>, collateral_amount: u64) -> Result<()> {
+        instructions::deposit(ctx, collateral_amount)
+    }
+
+    pub fn withdraw(ctx: Context<Withdraw>, collateral_amount: u64) -> Result<()> {
+        instructions::withdraw(ctx, collateral_amount)
+    }
+
+    pub fn borrow(ctx: Context<Borrow>, loan_amount: u64) -> Result<()> {
+        instructions::borrow(ctx, loan_amount)
+    }
+
+    pub fn repay(ctx: Context<Repay>, loan_amount: u64) -> Result<()> {
+        instructions::repay(ctx, loan_amount)
+    }
 }

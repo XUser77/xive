@@ -61,6 +61,7 @@ pub struct OpenPosition<'info> {
     pub collateral: Account<'info, Collateral>,
 
     #[account(
+        mut,
         address = XUSD_MINT_ADDRESS,
         mint::authority = xive,
     )]
@@ -108,7 +109,7 @@ pub fn open_position(ctx: Context<OpenPosition>, collateral_amount: u64, loan_am
         ctx.accounts.borrower_xusd_ata.to_account_info(),
         loan_amount,
         &ctx.accounts.collateral,
-        ctx.accounts.collateral_mint.decimals,
+        &ctx.accounts.collateral_mint,
     )?;
 
     Ok(())

@@ -4,9 +4,17 @@ pub mod open_position;
 pub mod update_collateral;
 pub mod set_collateral_price;
 pub mod process_position;
+pub mod deposit;
+pub mod withdraw;
+pub mod borrow;
+pub mod repay;
 
 pub use initialize::*;
 pub use init_wallet::*;
 pub use open_position::*;
 pub use update_collateral::*;
 pub use set_collateral_price::*;
+pub use deposit::*;
+pub use withdraw::*;
+pub use borrow::*;
+pub use repay::*;

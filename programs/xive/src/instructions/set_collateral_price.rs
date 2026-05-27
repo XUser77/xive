@@ -18,8 +18,6 @@ pub struct SetCollateralPrice<'info> {
         bump = collateral.bump,
     )]
     pub collateral: Account<'info, Collateral>,
-
-    pub system_program: Program<'info, System>,
 }
 
 pub fn set_collateral_price(ctx: Context<SetCollateralPrice>, price: u64) -> Result<()> {
