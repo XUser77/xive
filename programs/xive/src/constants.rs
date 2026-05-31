@@ -7,6 +7,12 @@ pub const XIVE_SEED: &str = "xive";
 pub const XUSD_MINT_ADDRESS: Pubkey = pubkey!("xusdSPQZr3PMbWNE4CcxVgezKL2UPcR74o45c6LWVF4");
 
 #[constant]
+pub const VAULT_ADDRESS: Pubkey = pubkey!("xva8xAjCCadQpphx5wCXnoLf5rkZuYu85Xxt88V3XnK");
+
+#[constant]
+pub const TEAM_ADDRESS: Pubkey = pubkey!("xtm3VMkqiNhP2rd74yZUzsXFZMyAJapmcP7HUSfwD4i");
+
+#[constant]
 pub const XUSD_DECIMALS: u8 = 6;
 
 #[constant]

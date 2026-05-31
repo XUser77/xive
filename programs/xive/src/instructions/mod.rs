@@ -10,6 +10,8 @@ pub mod borrow;
 pub mod repay;
 pub mod close_position;
 pub mod liquidate_position;
+pub mod return_collateral;
+pub mod mint;
 
 pub use initialize::*;
 pub use init_wallet::*;
@@ -22,3 +24,4 @@ pub use borrow::*;
 pub use repay::*;
 pub use close_position::*;
 pub use liquidate_position::*;
+pub use return_collateral::*;

@@ -37,4 +37,13 @@ pub enum XiveError {
 
     #[msg("Healthy position")]
     HealthyPosition,
+
+    #[msg("Active position")]
+    ActivePosition,
+
+    #[msg("Signer not vault")]
+    SignerNotVault,
+
+    #[msg("Invalid signer")]
+    InvalidSigner,
 }

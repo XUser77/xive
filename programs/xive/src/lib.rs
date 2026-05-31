@@ -62,4 +62,8 @@ pub mod xive {
     pub fn liquidate_position(ctx: Context<LiquidatePosition>) -> Result<()> {
         instructions::liquidate_position(ctx)
     }
+
+    pub fn return_collateral(ctx: Context<ReturnCollateral>, collateral_amount: u64) -> Result<()> {
+        instructions::return_collateral(ctx, collateral_amount)
+    }
 }

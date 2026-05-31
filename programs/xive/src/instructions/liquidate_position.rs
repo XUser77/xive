@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::Mint;
-use crate::{Position, PRICE_TIMEOUT, COLLATERAL_SEED, XIVE_SEED };
+use crate::{Position, POSITION_SEED, PRICE_TIMEOUT, COLLATERAL_SEED, XIVE_SEED, VAULT_ADDRESS };
 use crate::errors::XiveError;
 use crate::state::collateral::Collateral;
 use crate::state::xive::Xive;
@@ -12,7 +12,11 @@ pub struct LiquidatePosition<'info> {
     #[account(mut)]
     pub signer: Signer<'info>,
 
-    #[account(mut)]
+    #[account(
+        mut,
+        seeds = [POSITION_SEED.as_bytes(), position.borrower.key().as_ref(), position.index.to_le_bytes().as_ref()],
+        bump = position.bump,
+    )]
     pub position: Account<'info, Position>,
 
     #[account(
@@ -37,6 +41,8 @@ pub struct LiquidatePosition<'info> {
 }
 
 pub fn liquidate_position(ctx: Context<LiquidatePosition>) -> Result<()> {
+
+    require!(ctx.accounts.signer.key() == VAULT_ADDRESS, XiveError::SignerNotVault);
 
     let position = &mut ctx.accounts.position;
     let collateral = &ctx.accounts.collateral;
