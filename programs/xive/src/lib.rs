@@ -66,4 +66,12 @@ pub mod xive {
     pub fn return_collateral(ctx: Context<ReturnCollateral>, collateral_amount: u64) -> Result<()> {
         instructions::return_collateral(ctx, collateral_amount)
     }
+
+    pub fn mint(ctx: Context<Mint>, amount: u64) -> Result<()> {
+        instructions::mint(ctx, amount)
+    }
+
+    pub fn burn(ctx: Context<Burn>, amount: u64) -> Result<()> {
+        instructions::burn(ctx, amount)
+    }
 }

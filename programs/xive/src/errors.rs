@@ -46,4 +46,7 @@ pub enum XiveError {
 
     #[msg("Invalid signer")]
     InvalidSigner,
+
+    #[msg("Exceed balance")]
+    ExceedBalance,
 }
