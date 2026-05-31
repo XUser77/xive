@@ -58,4 +58,8 @@ pub mod xive {
     pub fn close_position(ctx: Context<ClosePosition>) -> Result<()> {
         instructions::close_position(ctx)
     }
+
+    pub fn liquidate_position(ctx: Context<LiquidatePosition>) -> Result<()> {
+        instructions::liquidate_position(ctx)
+    }
 }

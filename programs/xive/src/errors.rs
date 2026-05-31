@@ -34,4 +34,7 @@ pub enum XiveError {
 
     #[msg("Position closed")]
     PositionClosed,
+
+    #[msg("Healthy position")]
+    HealthyPosition,
 }
