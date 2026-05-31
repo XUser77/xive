@@ -68,6 +68,7 @@ pub struct OpenPosition<'info> {
     pub xusd_mint: Account<'info, Mint>,
 
     #[account(
+        mut,
         seeds = [XIVE_SEED.as_bytes()],
         bump = xive.bump,
     )]
@@ -103,7 +104,7 @@ pub fn open_position(ctx: Context<OpenPosition>, collateral_amount: u64, loan_am
 
     borrow_xusd(
         position,
-        &ctx.accounts.xive,
+        &mut ctx.accounts.xive,
         ctx.accounts.token_program.key(),
         ctx.accounts.xusd_mint.to_account_info(),
         ctx.accounts.borrower_xusd_ata.to_account_info(),

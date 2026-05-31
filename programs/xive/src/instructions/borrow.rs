@@ -45,6 +45,7 @@ pub struct Borrow<'info> {
     pub collateral_mint: Account<'info, Mint>,
 
     #[account(
+        mut,
         seeds = [XIVE_SEED.as_bytes()],
         bump = xive.bump,
     )]
@@ -59,7 +60,7 @@ pub fn borrow(ctx: Context<Borrow>, loan_amount: u64) -> Result<()> {
 
     borrow_xusd(
         &mut ctx.accounts.position,
-        &ctx.accounts.xive,
+        &mut ctx.accounts.xive,
         ctx.accounts.token_program.key(),
         ctx.accounts.xusd_mint.to_account_info(),
         ctx.accounts.borrower_xusd_ata.to_account_info(),

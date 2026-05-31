@@ -44,7 +44,6 @@ pub fn withdraw_collateral<'info>(position: &mut Account<'info, Position>,
                                   program_collateral_ata: AccountInfo<'info>,
                                   collateral_mint: &Account<'info, Mint>,
                                   collateral: &Account<'info, Collateral>,
-                                  borrower: AccountInfo<'info>,
                                   collateral_amount: u64) -> Result<()> {
     require!(collateral_amount <= position.collateral_amount, XiveError::InsufficientCollateral);
     require!(collateral_amount > 0, XiveError::CollateralZero);
@@ -89,7 +88,7 @@ pub fn withdraw_collateral<'info>(position: &mut Account<'info, Position>,
 }
 
 pub fn borrow_xusd<'info>(position: &mut Account<'info, Position>,
-                          xive: &Account<'info, Xive>,
+                          xive: &mut Account<'info, Xive>,
                           token_program: Pubkey,
                           xusd_mint: AccountInfo<'info>,
                           borrower_xusd_ata: AccountInfo<'info>,
@@ -134,7 +133,14 @@ pub fn borrow_xusd<'info>(position: &mut Account<'info, Position>,
         borrower_xusd
     )?;
 
-    // TODO: Mint fee
+    let vault_fee = fee.checked_div(5).ok_or(XiveError::MathOverflow)?;
+    let team_fee = fee.checked_sub(vault_fee).ok_or(XiveError::MathOverflow)?;
+
+    let vault_fee = i64::try_from(vault_fee).map_err(|_| XiveError::MathOverflow)?;
+    let team_fee = i64::try_from(team_fee).map_err(|_| XiveError::MathOverflow)?;
+
+    xive.vault_balance = xive.vault_balance.checked_add(vault_fee).ok_or(XiveError::MathOverflow)?;
+    xive.team_balance = xive.team_balance.checked_add(team_fee).ok_or(XiveError::MathOverflow)?;
 
     Ok(())
 }

@@ -64,7 +64,6 @@ pub fn withdraw(ctx: Context<Withdraw>, collateral_amount: u64) -> Result<()> {
         ctx.accounts.program_collateral_ata.to_account_info(),
         &ctx.accounts.collateral_mint,
         &ctx.accounts.collateral,
-        ctx.accounts.borrower.to_account_info(),
         collateral_amount,
     )?;
 
