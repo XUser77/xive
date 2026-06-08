@@ -32,4 +32,12 @@ pub mod vault {
         instructions::withdraw(ctx, lp_amount, min_xusd_amount)
     }
 
+    pub fn buy_xusd(ctx: Context<BuyXusd>, amount: u64) -> Result<()> {
+        instructions::buy_xusd(ctx, amount)
+    }
+
+    pub fn buy_usdc(ctx: Context<BuyUsdc>, amount: u64) -> Result<()> {
+        instructions::buy_usdc(ctx, amount)
+    }
+
 }
