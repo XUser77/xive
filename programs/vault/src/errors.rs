@@ -11,6 +11,12 @@ pub enum VaultError {
     #[msg("LP amount too small")]
     LPAmountTooSmall,
 
+    #[msg("Withdraw amount too small")]
+    WithdrawAmountTooSmall,
+
+    #[msg("xUSD amount too small")]
+    XusdAmountTooSmall,
+
     #[msg("Slippage exceeded")]
     SlippageExceeded
 }
