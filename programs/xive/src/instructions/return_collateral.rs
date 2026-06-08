@@ -1,8 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::Mint;
-use crate::{ Position, POSITION_SEED, COLLATERAL_SEED, VAULT_ADDRESS };
+use crate::{ Position, POSITION_SEED, VAULT_ADDRESS };
 use crate::errors::XiveError;
-use crate::state::collateral::Collateral;
 
 #[derive(Accounts)]
 pub struct ReturnCollateral<'info> {

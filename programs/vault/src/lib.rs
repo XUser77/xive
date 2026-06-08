@@ -3,10 +3,14 @@
 pub mod instructions;
 pub mod state;
 pub mod constants;
+pub mod errors;
 
 use state::vault::Vault;
-use constants::{ VAULT_SEED, LP_XUSD_ADDRESS, LP_XUSD_DECIMALS };
+use constants::*;
 use instructions::*;
+use errors::*;
+use xive::constants::*;
+use xive::state::xive::*;
 
 use anchor_lang::prelude::*;
 
