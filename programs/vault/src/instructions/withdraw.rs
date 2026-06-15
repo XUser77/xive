@@ -3,7 +3,9 @@ use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token;
 use anchor_spl::token::{Mint, Burn, Token, TransferChecked};
 use anchor_spl::token::TokenAccount;
-use crate::{Vault, Xive, XIVE_SEED, LP_XUSD_MINT_ADDRESS, XUSD_MINT_ADDRESS, USDC_MINT_ADDRESS, VaultError };
+use xive::cpi::accounts::Mint as XiveMint;
+use xive::program::Xive as XiveProgram;
+use crate::{Vault, Xive, XIVE_SEED, LP_XUSD_MINT_ADDRESS, XUSD_MINT_ADDRESS, USDC_MINT_ADDRESS, XIVE_PROGRAM_ID, VaultError };
 use crate::instructions::utils::get_lp_xusd_price;
 use crate::constants::VAULT_SEED;
 
@@ -14,12 +16,14 @@ pub struct Withdraw<'info> {
     pub investor: Signer<'info>,
 
     #[account(
+        mut,
         seeds = [VAULT_SEED.as_bytes()],
         bump = vault.bump,
     )]
     pub vault: Account<'info, Vault>,
 
     #[account(
+        mut,
         seeds = [XIVE_SEED.as_bytes()],
         bump = xive.bump,
         seeds::program = xive::ID
@@ -33,6 +37,7 @@ pub struct Withdraw<'info> {
     pub lp_xusd_mint: Account<'info, Mint>,
 
     #[account(
+        mut,
         address = XUSD_MINT_ADDRESS,
     )]
     pub xusd_mint: Account<'info, Mint>,
@@ -75,6 +80,8 @@ pub struct Withdraw<'info> {
 
     pub system_program: Program<'info, System>,
 
+    pub xive_program: Program<'info, XiveProgram>,
+
 }
 
 pub fn withdraw(ctx: Context<Withdraw>, lp_amount: u64, min_xusd_amount: u64) -> Result<()> {
@@ -109,19 +116,45 @@ pub fn withdraw(ctx: Context<Withdraw>, lp_amount: u64, min_xusd_amount: u64) ->
         lp_amount,
     )?;
 
-    let vault = &ctx.accounts.vault;
-    let bump = vault.bump;
+    let bump = ctx.accounts.vault.bump;
     let signer_seeds: &[&[&[u8]]] = &[&[
         VAULT_SEED.as_bytes(),
         &[bump],
     ]];
+
+    // The vault always pays redemptions in xUSD, but its xUSD reserve can be
+    // drained by swaps (buy_xusd). If on-hand xUSD is short, borrow the
+    // difference from xive by minting it. This is NAV-neutral: the minted xUSD
+    // raises vault_xusd_ata while xive.vault_balance drops by the same amount.
+    let on_hand = ctx.accounts.vault_xusd_ata.amount;
+    if xusd_amount > on_hand {
+        let shortfall = xusd_amount.checked_sub(on_hand).ok_or(VaultError::MathOverflow)?;
+
+        xive::cpi::mint(
+            CpiContext::new_with_signer(
+                XIVE_PROGRAM_ID,
+                XiveMint {
+                    signer: ctx.accounts.vault.to_account_info(),
+                    xive: ctx.accounts.xive.to_account_info(),
+                    xusd_mint: ctx.accounts.xusd_mint.to_account_info(),
+                    signer_ata: ctx.accounts.vault_xusd_ata.to_account_info(),
+                    token_program: ctx.accounts.token_program.to_account_info(),
+                    system_program: ctx.accounts.system_program.to_account_info(),
+                    associated_token_program: ctx.accounts.associated_token_program.to_account_info(),
+                },
+                signer_seeds,
+            ),
+            shortfall,
+        )?;
+    }
+
     token::transfer_checked(
         CpiContext::new_with_signer(
             ctx.accounts.token_program.key(),
             TransferChecked {
                 from: ctx.accounts.vault_xusd_ata.to_account_info(),
                 to: ctx.accounts.investor_xusd_ata.to_account_info(),
-                authority: vault.to_account_info(),
+                authority: ctx.accounts.vault.to_account_info(),
                 mint: ctx.accounts.xusd_mint.to_account_info(),
             },
             signer_seeds,
