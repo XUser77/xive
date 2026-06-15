@@ -24,6 +24,14 @@ pub mod team {
         instructions::initialize(ctx)
     }
 
+    pub fn deposit(ctx: Context<Deposit>, amount: u64) -> Result<()> {
+        instructions::deposit(ctx, amount)
+    }
+
+    pub fn withdraw(ctx: Context<Withdraw>, amount: u64) -> Result<()> {
+        instructions::withdraw(ctx, amount)
+    }
+
     pub fn transfer_from_xive(ctx: Context<TransferFromXive>, amount: u64) -> Result<()> {
         instructions::transfer_from_xive(ctx, amount)
     }
