@@ -3,7 +3,8 @@ use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token;
 use anchor_spl::token::{Mint, MintTo, Token, TransferChecked};
 use anchor_spl::token::TokenAccount;
-use crate::{Vault, VAULT_SEED, Xive, XIVE_SEED, LP_XUSD_MINT_ADDRESS, XUSD_MINT_ADDRESS, USDC_MINT_ADDRESS, VaultError };
+use crate::{Vault, Xive, XIVE_SEED, LP_XUSD_MINT_ADDRESS, XUSD_MINT_ADDRESS, USDC_MINT_ADDRESS, VaultError };
+use crate::constants::VAULT_SEED;
 use crate::instructions::utils::get_lp_xusd_price;
 
 #[derive(Accounts)]

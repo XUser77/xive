@@ -40,4 +40,12 @@ pub mod vault {
         instructions::buy_usdc(ctx, amount)
     }
 
+    pub fn transfer_to_xive(ctx: Context<TransferToXive>, amount: u64) -> Result<()> {
+        instructions::transfer_to_xive(ctx, amount)
+    }
+
+    pub fn transfer_from_xive(ctx: Context<TransferFromXive>, amount: u64) -> Result<()> {
+        instructions::transfer_from_xive(ctx, amount)
+    }
+
 }

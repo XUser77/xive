@@ -10,7 +10,13 @@ pub const XUSD_MINT_ADDRESS: Pubkey = pubkey!("xusdSPQZr3PMbWNE4CcxVgezKL2UPcR74
 pub const VAULT_ADDRESS: Pubkey = pubkey!("xva8xAjCCadQpphx5wCXnoLf5rkZuYu85Xxt88V3XnK");
 
 #[constant]
+pub const VAULT_SEED: &str = "vault";
+
+#[constant]
 pub const TEAM_ADDRESS: Pubkey = pubkey!("xtm3VMkqiNhP2rd74yZUzsXFZMyAJapmcP7HUSfwD4i");
+
+#[constant]
+pub const TEAM_SEED: &str = "team";
 
 #[constant]
 pub const XUSD_DECIMALS: u8 = 6;

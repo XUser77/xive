@@ -20,3 +20,6 @@ pub const LP_XUSD_INITIAL_PRICE: u64 = 1000 * 1000; // 1_000_000 => 1 XUSD
 
 #[constant]
 pub const USDC_MINT_ADDRESS: Pubkey = pubkey!("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
+
+#[constant]
+pub const XIVE_PROGRAM_ID: Pubkey = pubkey!("xiveHxXiqHUkFnX5DsmTsAbByTZS5bdGGpdZ9wpmNCR");

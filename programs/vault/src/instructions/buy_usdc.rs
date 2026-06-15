@@ -2,7 +2,8 @@ use anchor_lang::prelude::*;
 use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token;
 use anchor_spl::token::{Mint, Token, TokenAccount, TransferChecked};
-use crate::{Vault, VAULT_SEED, XUSD_MINT_ADDRESS, USDC_MINT_ADDRESS, VaultError, SWAP_FEE };
+use crate::{Vault, XUSD_MINT_ADDRESS, USDC_MINT_ADDRESS, VaultError, SWAP_FEE };
+use crate::constants::VAULT_SEED;
 
 #[derive(Accounts)]
 pub struct BuyUsdc<'info> {

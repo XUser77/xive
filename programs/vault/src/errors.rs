@@ -21,5 +21,8 @@ pub enum VaultError {
     UsdcAmountTooSmall,
 
     #[msg("Slippage exceeded")]
-    SlippageExceeded
+    SlippageExceeded,
+
+    #[msg("Value cannot be zero")]
+    ValueCannotBeZero,
 }

@@ -1,6 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, Token};
-use crate::{Vault, VAULT_SEED, LP_XUSD_MINT_ADDRESS, LP_XUSD_DECIMALS };
+use crate::{Vault, LP_XUSD_MINT_ADDRESS, LP_XUSD_DECIMALS };
+use crate::constants::VAULT_SEED;
 
 #[derive(Accounts)]
 pub struct Initialize<'info> {

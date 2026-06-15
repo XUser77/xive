@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token;
 use anchor_spl::token::{MintTo, Token, TokenAccount};
-use crate::{Xive, XIVE_SEED, VAULT_ADDRESS, TEAM_ADDRESS, XUSD_MINT_ADDRESS };
+use crate::{Xive, XIVE_SEED, XUSD_MINT_ADDRESS, utils};
 use crate::errors::XiveError;
 
 #[derive(Accounts)]
@@ -41,18 +41,21 @@ pub struct Mint<'info> {
 
 pub fn mint(ctx: Context<Mint>, amount: u64) -> Result<()> {
 
+    let vault_address = utils::get_vault_pda_address()?;
+    let team_address = utils::get_team_pda_address()?;
+
     require!(
-        [VAULT_ADDRESS, TEAM_ADDRESS].contains(&ctx.accounts.signer.key()),
+        [vault_address, team_address].contains(&ctx.accounts.signer.key()),
         XiveError::InvalidSigner
     );
 
     let xive = &mut ctx.accounts.xive;
     let val = i64::try_from(amount).map_err(|_| XiveError::MathOverflow)?;
 
-    if TEAM_ADDRESS == ctx.accounts.signer.key() {
+    if team_address == ctx.accounts.signer.key() {
         require!(xive.team_balance >= val, XiveError::ExceedBalance);
         xive.team_balance = xive.team_balance.checked_sub(val).ok_or(XiveError::MathOverflow)?;
-    } else if VAULT_ADDRESS == ctx.accounts.signer.key() {
+    } else if vault_address == ctx.accounts.signer.key() {
         xive.vault_balance = xive.vault_balance.checked_sub(val).ok_or(XiveError::MathOverflow)?;
     }
 

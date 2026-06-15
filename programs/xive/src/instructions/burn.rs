@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token;
 use anchor_spl::token::{Token, TokenAccount};
-use crate::{Xive, XIVE_SEED, VAULT_ADDRESS, TEAM_ADDRESS, XUSD_MINT_ADDRESS };
+use crate::{Xive, XIVE_SEED, XUSD_MINT_ADDRESS, utils};
 use crate::errors::XiveError;
 
 #[derive(Accounts)]
@@ -23,9 +23,10 @@ pub struct Burn<'info> {
         address = XUSD_MINT_ADDRESS,
         mint::authority = xive,
     )]
-    pub xusd_mint: Account<'info, anchor_spl::token::Mint>,
+    pub xusd_mint: Account<'info, token::Mint>,
 
     #[account(
+        mut,
         associated_token::mint = xusd_mint,
         associated_token::authority = signer,
     )]
@@ -39,8 +40,11 @@ pub struct Burn<'info> {
 
 pub fn burn(ctx: Context<Burn>, amount: u64) -> Result<()> {
 
+    let vault_address = utils::get_vault_pda_address()?;
+    let team_address = utils::get_team_pda_address()?;
+
     require!(
-        [VAULT_ADDRESS, TEAM_ADDRESS].contains(&ctx.accounts.signer.key()),
+        [vault_address, team_address].contains(&ctx.accounts.signer.key()),
         XiveError::InvalidSigner
     );
 
@@ -48,9 +52,9 @@ pub fn burn(ctx: Context<Burn>, amount: u64) -> Result<()> {
 
     let val = i64::try_from(amount).map_err(|_| XiveError::MathOverflow)?;
 
-    if TEAM_ADDRESS == ctx.accounts.signer.key() {
+    if team_address == ctx.accounts.signer.key() {
         xive.team_balance = xive.team_balance.checked_add(val).ok_or(XiveError::MathOverflow)?;
-    } else if VAULT_ADDRESS == ctx.accounts.signer.key() {
+    } else if vault_address == ctx.accounts.signer.key() {
         xive.vault_balance = xive.vault_balance.checked_add(val).ok_or(XiveError::MathOverflow)?;
     }
 
