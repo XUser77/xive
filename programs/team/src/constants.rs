@@ -14,3 +14,9 @@ pub const VE_XIVE_TOKEN_ADDRESS: Pubkey = pubkey!("xvepigF8qv1N2WdCmsQ6oht8owBjM
 
 #[constant]
 pub const XIVE_TOKEN_SUPPLY: u64 = 1_000_000_000 * 1_000_000; // 1 Billion
+
+#[constant]
+pub const STAKE_SEED: &str = "stake";
+
+// Fixed-point scale for the xUSD-per-staked-veXIVE reward accumulator.
+pub const ACC_SCALE: u128 = 1_000_000_000_000; // 1e12

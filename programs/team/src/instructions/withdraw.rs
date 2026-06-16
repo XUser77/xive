@@ -1,9 +1,10 @@
 use anchor_lang::prelude::*;
 use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token;
-use anchor_spl::token::{Burn, Mint, Token, TokenAccount, TransferChecked};
+use anchor_spl::token::{Burn, FreezeAccount, Mint, ThawAccount, Token, TokenAccount, TransferChecked};
 use crate::{Team, TeamError, XIVE_TOKEN_ADDRESS, VE_XIVE_TOKEN_ADDRESS};
-use crate::constants::TEAM_SEED;
+use crate::constants::{STAKE_SEED, TEAM_SEED};
+use crate::state::stake::Stake;
 
 #[derive(Accounts)]
 pub struct Withdraw<'info> {
@@ -12,10 +13,18 @@ pub struct Withdraw<'info> {
     pub signer: Signer<'info>,
 
     #[account(
+        mut,
         seeds = [TEAM_SEED.as_bytes()],
         bump = team.bump,
     )]
     pub team: Account<'info, Team>,
+
+    #[account(
+        mut,
+        seeds = [STAKE_SEED.as_bytes(), signer.key().as_ref()],
+        bump = stake.bump,
+    )]
+    pub stake: Account<'info, Stake>,
 
     #[account(address = XIVE_TOKEN_ADDRESS)]
     pub xive_mint: Account<'info, Mint>,
@@ -24,6 +33,7 @@ pub struct Withdraw<'info> {
         mut,
         address = VE_XIVE_TOKEN_ADDRESS,
         mint::authority = team,
+        mint::freeze_authority = team,
     )]
     pub ve_xive_mint: Account<'info, Mint>,
 
@@ -43,7 +53,7 @@ pub struct Withdraw<'info> {
     )]
     pub team_xive_ata: Account<'info, TokenAccount>,
 
-    // user's veXIVE — burned on withdraw
+    // user's veXIVE — burned on withdraw (frozen until thawed below)
     #[account(
         mut,
         associated_token::mint = ve_xive_mint,
@@ -61,7 +71,39 @@ pub fn withdraw(ctx: Context<Withdraw>, amount: u64) -> Result<()> {
 
     require!(amount > 0, TeamError::ValueCannotBeZero);
 
-    // 1) burn the user's veXIVE (user signs)
+    // 1) checkpoint the staker, then reduce the stake
+    let acc = ctx.accounts.team.acc_xusd_per_share;
+    let remaining;
+    {
+        let stake = &mut ctx.accounts.stake;
+        require!(stake.amount >= amount, TeamError::InsufficientStake);
+        stake.harvest(acc)?;
+        stake.amount = stake.amount.checked_sub(amount).ok_or(TeamError::MathOverflow)?;
+        stake.sync_debt(acc)?;
+        remaining = stake.amount;
+    }
+    ctx.accounts.team.total_staked = ctx.accounts.team.total_staked
+        .checked_sub(amount).ok_or(TeamError::MathOverflow)?;
+
+    let bump = ctx.accounts.team.bump;
+    let signer_seeds: &[&[&[u8]]] = &[&[
+        TEAM_SEED.as_bytes(),
+        &[bump],
+    ]];
+
+    // 2) thaw and burn the user's veXIVE (thaw via team freeze authority, burn via user)
+    token::thaw_account(
+        CpiContext::new_with_signer(
+            ctx.accounts.token_program.key(),
+            ThawAccount {
+                account: ctx.accounts.signer_ve_xive_ata.to_account_info(),
+                mint: ctx.accounts.ve_xive_mint.to_account_info(),
+                authority: ctx.accounts.team.to_account_info(),
+            },
+            signer_seeds,
+        ),
+    )?;
+
     token::burn(
         CpiContext::new(
             ctx.accounts.token_program.key(),
@@ -74,13 +116,22 @@ pub fn withdraw(ctx: Context<Withdraw>, amount: u64) -> Result<()> {
         amount,
     )?;
 
-    // 2) return XIVE 1:1 from the escrow (team PDA signs)
-    let bump = ctx.accounts.team.bump;
-    let signer_seeds: &[&[&[u8]]] = &[&[
-        TEAM_SEED.as_bytes(),
-        &[bump],
-    ]];
+    // re-freeze only if the user still has a staked position
+    if remaining > 0 {
+        token::freeze_account(
+            CpiContext::new_with_signer(
+                ctx.accounts.token_program.key(),
+                FreezeAccount {
+                    account: ctx.accounts.signer_ve_xive_ata.to_account_info(),
+                    mint: ctx.accounts.ve_xive_mint.to_account_info(),
+                    authority: ctx.accounts.team.to_account_info(),
+                },
+                signer_seeds,
+            ),
+        )?;
+    }
 
+    // 3) return XIVE 1:1 from the escrow (team PDA signs)
     token::transfer_checked(
         CpiContext::new_with_signer(
             ctx.accounts.token_program.key(),

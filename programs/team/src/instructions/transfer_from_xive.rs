@@ -5,7 +5,7 @@ use anchor_spl::token::{Token, TokenAccount};
 use xive::cpi::accounts::Mint;
 use xive::program::Xive as XiveProgram;
 use crate::{ Team, Xive, TeamError, XIVE_SEED, XIVE_PROGRAM_ID, XUSD_MINT_ADDRESS };
-use crate::constants::TEAM_SEED;
+use crate::constants::{ACC_SCALE, TEAM_SEED};
 
 #[derive(Accounts)]
 pub struct TransferFromXive<'info> {
@@ -14,6 +14,7 @@ pub struct TransferFromXive<'info> {
     pub authority: Signer<'info>,
 
     #[account(
+        mut,
         seeds = [TEAM_SEED.as_ref()],
         bump = team.bump,
     )]
@@ -53,18 +54,18 @@ pub fn transfer_from_xive(ctx: Context<TransferFromXive>, amount: u64) -> Result
 
     require!(amount > 0, TeamError::ValueCannotBeZero);
 
-    let team = &ctx.accounts.team;
-    let bump = team.bump;
+    let bump = ctx.accounts.team.bump;
     let signer_seeds: &[&[&[u8]]] = &[&[
         TEAM_SEED.as_bytes(),
         &[bump],
     ]];
 
+    // pull the team's accrued fees out of xive as xUSD, into the reward vault (team_ata)
     xive::cpi::mint(
         CpiContext::new_with_signer(
             XIVE_PROGRAM_ID,
             Mint {
-                signer: team.to_account_info(),
+                signer: ctx.accounts.team.to_account_info(),
                 xive: ctx.accounts.xive.to_account_info(),
                 xusd_mint: ctx.accounts.xusd_mint.to_account_info(),
                 signer_ata: ctx.accounts.team_ata.to_account_info(),
@@ -76,6 +77,22 @@ pub fn transfer_from_xive(ctx: Context<TransferFromXive>, amount: u64) -> Result
         ),
         amount,
     )?;
+
+    // distribute to veXIVE stakers via the reward accumulator (O(1))
+    let team = &mut ctx.accounts.team;
+    let dist = amount.checked_add(team.undistributed).ok_or(TeamError::MathOverflow)?;
+
+    if team.total_staked > 0 {
+        let add = (dist as u128)
+            .checked_mul(ACC_SCALE).ok_or(TeamError::MathOverflow)?
+            .checked_div(team.total_staked as u128).ok_or(TeamError::MathOverflow)?;
+        team.acc_xusd_per_share = team.acc_xusd_per_share
+            .checked_add(add).ok_or(TeamError::MathOverflow)?;
+        team.undistributed = 0;
+    } else {
+        // nobody staked yet — carry the fees forward to the next distribution
+        team.undistributed = dist;
+    }
 
     Ok(())
 }

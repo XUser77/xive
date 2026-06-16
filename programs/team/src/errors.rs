@@ -7,4 +7,10 @@ pub enum TeamError {
 
     #[msg("Value cannot be zero")]
     ValueCannotBeZero,
+
+    #[msg("Insufficient staked balance")]
+    InsufficientStake,
+
+    #[msg("Nothing to claim")]
+    NothingToClaim,
 }

@@ -32,6 +32,10 @@ pub mod team {
         instructions::withdraw(ctx, amount)
     }
 
+    pub fn claim(ctx: Context<Claim>) -> Result<()> {
+        instructions::claim(ctx)
+    }
+
     pub fn transfer_from_xive(ctx: Context<TransferFromXive>, amount: u64) -> Result<()> {
         instructions::transfer_from_xive(ctx, amount)
     }
