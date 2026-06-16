@@ -23,3 +23,10 @@ pub const USDC_MINT_ADDRESS: Pubkey = pubkey!("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wE
 
 #[constant]
 pub const XIVE_PROGRAM_ID: Pubkey = pubkey!("xiveHxXiqHUkFnX5DsmTsAbByTZS5bdGGpdZ9wpmNCR");
+
+#[constant]
+pub const JUPITER_PROGRAM_ID: Pubkey = pubkey!("JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4");
+
+// Extra USDC, on top of the seized debt, the liquidation swap must yield (percent).
+#[constant]
+pub const LIQUIDATION_BONUS_PCT: u64 = 5;

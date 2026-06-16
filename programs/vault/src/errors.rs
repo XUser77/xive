@@ -25,4 +25,7 @@ pub enum VaultError {
 
     #[msg("Value cannot be zero")]
     ValueCannotBeZero,
+
+    #[msg("Position has no debt to liquidate")]
+    NothingToLiquidate,
 }

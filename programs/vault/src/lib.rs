@@ -48,4 +48,8 @@ pub mod vault {
         instructions::transfer_from_xive(ctx, amount)
     }
 
+    pub fn liquidate(ctx: Context<Liquidate>, jupiter_swap_data: Vec<u8>) -> Result<()> {
+        instructions::liquidate(ctx, jupiter_swap_data)
+    }
+
 }
