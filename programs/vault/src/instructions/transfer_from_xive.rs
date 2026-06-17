@@ -15,14 +15,15 @@ pub struct TransferFromXive<'info> {
     pub authority: Signer<'info>,
 
     #[account(
-        seeds = [VAULT_SEED.as_ref()],
+        mut,
+        seeds = [VAULT_SEED.as_bytes()],
         bump = vault.bump,
     )]
     pub vault: Account<'info, Vault>,
 
     #[account(
         mut,
-        seeds = [XIVE_SEED.as_ref()],
+        seeds = [XIVE_SEED.as_bytes()],
         bump = xive.bump,
         seeds::program = xive_program.key()
     )]
@@ -36,7 +37,8 @@ pub struct TransferFromXive<'info> {
     pub xusd_mint: Account<'info, token::Mint>,
 
     #[account(
-        mut,
+        init_if_needed,
+        payer = authority,
         associated_token::mint = xusd_mint,
         associated_token::authority = vault,
     )]

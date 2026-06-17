@@ -16,14 +16,15 @@ pub struct TransferToXive<'info> {
     pub authority: Signer<'info>,
 
     #[account(
-        seeds = [VAULT_SEED.as_ref()],
+        mut,
+        seeds = [VAULT_SEED.as_bytes()],
         bump = vault.bump,
     )]
     pub vault: Account<'info, Vault>,
 
     #[account(
         mut,
-        seeds = [XIVE_SEED.as_ref()],
+        seeds = [XIVE_SEED.as_bytes()],
         bump = xive.bump,
         seeds::program = xive_program.key()
     )]

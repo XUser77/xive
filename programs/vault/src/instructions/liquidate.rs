@@ -50,7 +50,7 @@ pub struct Liquidate<'info> {
         associated_token::mint = collateral_mint,
         associated_token::authority = xive,
     )]
-    pub xive_collateral_ata: Account<'info, TokenAccount>,
+    pub xive_collateral_ata: Box<Account<'info, TokenAccount>>,
 
     // vault's collateral ATA — receives the seized collateral, source for the swap
     #[account(
@@ -59,7 +59,7 @@ pub struct Liquidate<'info> {
         associated_token::mint = collateral_mint,
         associated_token::authority = vault,
     )]
-    pub vault_collateral_ata: Account<'info, TokenAccount>,
+    pub vault_collateral_ata: Box<Account<'info, TokenAccount>>,
 
     #[account(address = USDC_MINT_ADDRESS)]
     pub usdc_mint: Account<'info, Mint>,
@@ -71,7 +71,7 @@ pub struct Liquidate<'info> {
         associated_token::mint = usdc_mint,
         associated_token::authority = vault,
     )]
-    pub vault_usdc_ata: Account<'info, TokenAccount>,
+    pub vault_usdc_ata: Box<Account<'info, TokenAccount>>,
 
     /// CHECK: forwarded swap target; pinned to the Jupiter program id
     #[account(address = JUPITER_PROGRAM_ID)]

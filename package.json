@@ -4,11 +4,11 @@
   "scripts": {
     "lint:fix": "prettier */*.js \"*/**/*{.js,.ts}\" -w",
     "lint": "prettier */*.js \"*/**/*{.js,.ts}\" --check",
-    "surfpool": "surfpool start --legacy-anchor-compatibility --no-deploy --log-path surfpool --no-tui --log-level debug --rpc-url https://solana-mainnet.g.alchemy.com/v2/agv64qg5ioxEnHcoW4thH"
+    "surfpool": "surfpool start --legacy-anchor-compatibility --no-deploy --log-path surfpool --no-tui --log-level debug --airdrop-keypair-path keys/test-wallet.json --airdrop-keypair-path keys/deploy-wallet.json --airdrop-amount 1000000000000000 --rpc-url https://solana-mainnet.g.alchemy.com/v2/agv64qg5ioxEnHcoW4thH"
   },
   "dependencies": {
     "@anchor-lang/core": "^1.0.0",
-    "@coral-xyz/anchor": "^0.29.0",
+    "@coral-xyz/anchor": "^0.31.1",
     "@orca-so/whirlpools-sdk": "^0.13.0",
     "@solana/spl-token": "^0.4.14",
     "decimal.js": "^10.4.3"

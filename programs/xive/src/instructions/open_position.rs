@@ -14,6 +14,7 @@ pub struct OpenPosition<'info> {
     pub borrower: Signer<'info>,
 
     #[account(
+        mut,
         seeds = [WALLET_SEED.as_bytes(), borrower.key().as_ref()],
         bump = wallet.bump
     )]
@@ -37,7 +38,7 @@ pub struct OpenPosition<'info> {
         associated_token::mint = xusd_mint,
         associated_token::authority = borrower,
     )]
-    pub borrower_xusd_ata: Account<'info, TokenAccount>,
+    pub borrower_xusd_ata: Box<Account<'info, TokenAccount>>,
 
     #[account(
         init_if_needed,
@@ -45,13 +46,14 @@ pub struct OpenPosition<'info> {
         associated_token::mint = collateral_mint,
         associated_token::authority = borrower,
     )]
-    pub borrower_collateral_ata: Account<'info, TokenAccount>,
+    pub borrower_collateral_ata: Box<Account<'info, TokenAccount>>,
 
     #[account(
+        mut,
         associated_token::mint = collateral_mint,
         associated_token::authority = xive,
     )]
-    pub program_collateral_ata: Account<'info, TokenAccount>,
+    pub program_collateral_ata: Box<Account<'info, TokenAccount>>,
 
     #[account(
         seeds = [COLLATERAL_SEED.as_bytes(), collateral_mint.key().as_ref()],

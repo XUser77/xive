@@ -47,20 +47,23 @@ pub struct Deposit<'info> {
         associated_token::mint = xusd_mint,
         associated_token::authority = investor,
     )]
-    pub investor_xusd_ata: Account<'info, TokenAccount>,
+    pub investor_xusd_ata: Box<Account<'info, TokenAccount>>,
 
     #[account(
-        mut,
+        init_if_needed,
+        payer = investor,
         associated_token::mint = xusd_mint,
         associated_token::authority = vault,
     )]
-    pub vault_xusd_ata: Account<'info, TokenAccount>,
+    pub vault_xusd_ata: Box<Account<'info, TokenAccount>>,
 
     #[account(
+        init_if_needed,
+        payer = investor,
         associated_token::mint = usdc_mint,
         associated_token::authority = vault,
     )]
-    pub vault_usdc_ata: Account<'info, TokenAccount>,
+    pub vault_usdc_ata: Box<Account<'info, TokenAccount>>,
 
     #[account(
         init_if_needed,
@@ -68,7 +71,7 @@ pub struct Deposit<'info> {
         associated_token::mint = lp_xusd_mint,
         associated_token::authority = investor,
     )]
-    pub investor_lp_xusd_ata: Account<'info, TokenAccount>,
+    pub investor_lp_xusd_ata: Box<Account<'info, TokenAccount>>,
 
     pub token_program: Program<'info, Token>,
     pub associated_token_program: Program<'info, AssociatedToken>,
