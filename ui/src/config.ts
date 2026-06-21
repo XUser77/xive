@@ -1,6 +1,10 @@
 import { PublicKey } from "@solana/web3.js";
 
-export const RPC_ENDPOINT = "http://localhost:8899";
+// Production builds (`npm run build`) talk to the hosted node; local dev
+// (`npm run dev`) keeps pointing at a local surfpool/validator.
+export const RPC_ENDPOINT = import.meta.env.PROD
+  ? "https://node.xusd.tima.kz"
+  : "http://localhost:8899";
 
 export const XIVE_PROGRAM_ID = new PublicKey(
   "xiveHxXiqHUkFnX5DsmTsAbByTZS5bdGGpdZ9wpmNCR",
