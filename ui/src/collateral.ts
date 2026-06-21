@@ -1,9 +1,10 @@
 import { Connection, PublicKey } from "@solana/web3.js";
 import bs58 from "bs58";
 
-import { COLLATERALS_PROGRAM_ID } from "./config";
+import { XIVE_PROGRAM_ID } from "./config";
 
-/// Must stay in sync with `programs/collaterals/src/constants.rs::PRICE_DECIMALS`.
+/// Collateral prices are pushed on-chain as 6-decimal USD values, matching the
+/// xUSD mint decimals (see `programs/xive/src/utils.rs::get_position_bps`).
 export const PRICE_DECIMALS = 6;
 export const PRICE_SCALE = 10 ** PRICE_DECIMALS;
 
@@ -19,18 +20,21 @@ export function usdToPrice(usd: number): bigint {
   return BigInt(Math.round(usd * PRICE_SCALE));
 }
 
+// `Collateral` account discriminator — must match target/idl/xive.json.
 const COLLATERAL_DISCRIMINATOR = new Uint8Array([
   123, 130, 234, 63, 255, 240, 255, 92,
 ]);
 
-const COLLATERAL_SIZE = 8 + 32 + 1 + 8 + 8 + 1 + 8 + 8;
+// discriminator(8) + bump(1) + mint(32) + enabled(1) + ltv(u16) +
+// liquidation_ltv(u16) + price(u64) + price_date(i64)
+const COLLATERAL_SIZE = 8 + 1 + 32 + 1 + 2 + 2 + 8 + 8;
 
 export type Collateral = {
   address: PublicKey;
   mint: PublicKey;
   bump: number;
-  ltv: bigint;
-  liquidationLtv: bigint;
+  ltv: bigint; // basis points
+  liquidationLtv: bigint; // basis points
   allowed: boolean;
   price: bigint;
   priceDate: bigint;
@@ -40,20 +44,20 @@ function decodeCollateral(address: PublicKey, data: Buffer): Collateral {
   const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
   let o = 8; // skip discriminator
 
-  const mint = new PublicKey(data.subarray(o, o + 32));
-  o += 32;
-
   const bump = view.getUint8(o);
   o += 1;
 
-  const ltv = view.getBigUint64(o, true);
-  o += 8;
-
-  const liquidationLtv = view.getBigUint64(o, true);
-  o += 8;
+  const mint = new PublicKey(data.subarray(o, o + 32));
+  o += 32;
 
   const allowed = view.getUint8(o) !== 0;
   o += 1;
+
+  const ltv = BigInt(view.getUint16(o, true));
+  o += 2;
+
+  const liquidationLtv = BigInt(view.getUint16(o, true));
+  o += 2;
 
   const price = view.getBigUint64(o, true);
   o += 8;
@@ -67,7 +71,7 @@ function decodeCollateral(address: PublicKey, data: Buffer): Collateral {
 export async function fetchCollaterals(
   connection: Connection,
 ): Promise<Collateral[]> {
-  const accounts = await connection.getProgramAccounts(COLLATERALS_PROGRAM_ID, {
+  const accounts = await connection.getProgramAccounts(XIVE_PROGRAM_ID, {
     filters: [
       { dataSize: COLLATERAL_SIZE },
       {

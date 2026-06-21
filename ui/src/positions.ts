@@ -3,18 +3,23 @@ import bs58 from "bs58";
 
 import { XIVE_PROGRAM_ID } from "./config";
 
+// `Position` account discriminator — must match target/idl/xive.json.
 const POSITION_DISCRIMINATOR = new Uint8Array([
   170, 188, 143, 228, 122, 64, 247, 208,
 ]);
 
-const POSITION_SIZE = 8 + 1 + 32 + 32 + 8 + 8;
+// discriminator(8) + bump(1) + borrower(32) + index(u64) + collateral_mint(32) +
+// collateral_amount(u64) + loan_amount(u64) + close_date(i64)
+const POSITION_SIZE = 8 + 1 + 32 + 8 + 32 + 8 + 8 + 8;
 
 export type Position = {
   address: PublicKey;
   user: PublicKey;
+  index: bigint;
   collateralMint: PublicKey;
   collateralAmount: bigint;
   loanAmount: bigint;
+  closeDate: bigint;
 };
 
 function decode(address: PublicKey, data: Buffer): Position {
@@ -22,12 +27,16 @@ function decode(address: PublicKey, data: Buffer): Position {
   let o = 8 + 1; // skip discriminator + bump
   const user = new PublicKey(data.subarray(o, o + 32));
   o += 32;
+  const index = view.getBigUint64(o, true);
+  o += 8;
   const collateralMint = new PublicKey(data.subarray(o, o + 32));
   o += 32;
   const collateralAmount = view.getBigUint64(o, true);
   o += 8;
   const loanAmount = view.getBigUint64(o, true);
-  return { address, user, collateralMint, collateralAmount, loanAmount };
+  o += 8;
+  const closeDate = view.getBigInt64(o, true);
+  return { address, user, index, collateralMint, collateralAmount, loanAmount, closeDate };
 }
 
 export async function fetchUserPositions(
@@ -38,6 +47,7 @@ export async function fetchUserPositions(
     filters: [
       { dataSize: POSITION_SIZE },
       { memcmp: { offset: 0, bytes: bs58.encode(POSITION_DISCRIMINATOR) } },
+      // borrower lives at discriminator(8) + bump(1)
       { memcmp: { offset: 9, bytes: user.toBase58() } },
     ],
   });

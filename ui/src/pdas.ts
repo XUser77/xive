@@ -2,22 +2,10 @@ import { PublicKey } from "@solana/web3.js";
 
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
-  BPF_UPGRADEABLE_LOADER_ID,
-  COLLATERALS_PROGRAM_ID,
-  FEES_PROGRAM_ID,
-  PEG_KEEPER_PROGRAM_ID,
-  TEAM_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
   VAULT_PROGRAM_ID,
   XIVE_PROGRAM_ID,
 } from "./config";
-
-export function xiveProgramDataPda(): PublicKey {
-  return PublicKey.findProgramAddressSync(
-    [XIVE_PROGRAM_ID.toBuffer()],
-    BPF_UPGRADEABLE_LOADER_ID,
-  )[0];
-}
 
 export function xivePda(): PublicKey {
   return PublicKey.findProgramAddressSync(
@@ -26,25 +14,28 @@ export function xivePda(): PublicKey {
   )[0];
 }
 
+// Collateral config now lives inside the `xive` program (seed ["collateral", mint]).
 export function collateralPda(mint: PublicKey): PublicKey {
   return PublicKey.findProgramAddressSync(
     [Buffer.from("collateral"), mint.toBuffer()],
-    COLLATERALS_PROGRAM_ID,
-  )[0];
-}
-
-export function userCounterPda(user: PublicKey): PublicKey {
-  return PublicKey.findProgramAddressSync(
-    [Buffer.from("user-counter"), user.toBuffer()],
     XIVE_PROGRAM_ID,
   )[0];
 }
 
-export function positionPda(user: PublicKey, counter: bigint): PublicKey {
-  const buf = Buffer.alloc(8);
-  buf.writeBigUInt64LE(counter);
+// Per-borrower monotonic position counter (seed ["wallet", borrower]).
+export function walletPda(borrower: PublicKey): PublicKey {
   return PublicKey.findProgramAddressSync(
-    [Buffer.from("position"), user.toBuffer(), buf],
+    [Buffer.from("wallet"), borrower.toBuffer()],
+    XIVE_PROGRAM_ID,
+  )[0];
+}
+
+// Position PDA (seed ["pos", borrower, index]).
+export function positionPda(borrower: PublicKey, index: bigint): PublicKey {
+  const buf = Buffer.alloc(8);
+  buf.writeBigUInt64LE(index);
+  return PublicKey.findProgramAddressSync(
+    [Buffer.from("pos"), borrower.toBuffer(), buf],
     XIVE_PROGRAM_ID,
   )[0];
 }
@@ -53,27 +44,6 @@ export function vaultPda(): PublicKey {
   return PublicKey.findProgramAddressSync(
     [Buffer.from("vault")],
     VAULT_PROGRAM_ID,
-  )[0];
-}
-
-export function pegKeeperPda(): PublicKey {
-  return PublicKey.findProgramAddressSync(
-    [Buffer.from("peg-keeper")],
-    PEG_KEEPER_PROGRAM_ID,
-  )[0];
-}
-
-export function feesPda(): PublicKey {
-  return PublicKey.findProgramAddressSync(
-    [Buffer.from("fees")],
-    FEES_PROGRAM_ID,
-  )[0];
-}
-
-export function teamPda(): PublicKey {
-  return PublicKey.findProgramAddressSync(
-    [Buffer.from("team")],
-    TEAM_PROGRAM_ID,
   )[0];
 }
 

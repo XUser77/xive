@@ -23,7 +23,7 @@ import { ConnectButton } from "../ui/ConnectButton";
 import { KNOWN_MINTS, XUSD_DECIMALS } from "../config";
 import { useUserData, rawToWhole, wholeToRaw, balanceOf } from "../hooks/useUserData";
 import { useTxSender } from "../hooks/useTxSender";
-import { createUserStateIx, openPositionIx } from "../xiveInstructions";
+import { initWalletIx, openPositionIx } from "../xiveInstructions";
 import { priceToUsd } from "../collateral";
 
 const COMMISSION_BPS = 50n; // mirrors xive's DEFAULT_COMMISSION_BPS
@@ -52,7 +52,7 @@ function Locked() {
 
 function BorrowFlow() {
   const { publicKey } = useWallet();
-  const { collaterals, balances, userCounter, refresh, loading } = useUserData();
+  const { collaterals, balances, walletIndex, refresh, loading } = useUserData();
   const { send } = useTxSender();
   const nav = useNavigate();
   const [params] = useSearchParams();
@@ -104,16 +104,16 @@ function BorrowFlow() {
     setBusy(true);
     try {
       const ixs = [];
-      // userCounter PDA might not exist yet for fresh wallets — call createUserState first.
-      if (userCounter === null) ixs.push(createUserStateIx(publicKey));
-      const counter = userCounter ?? 0n;
+      // Wallet PDA might not exist yet for fresh wallets — initialize it first.
+      if (walletIndex === null) ixs.push(initWalletIx(publicKey));
+      const index = walletIndex ?? 0n;
       const colRaw = wholeToRaw(colWhole, decimals);
       const loanRaw = wholeToRaw(borrowWhole, XUSD_DECIMALS);
       ixs.push(
         openPositionIx({
           user: publicKey,
           collateralMint: new PublicKey(selected.mint),
-          counter,
+          index,
           collateralAmount: colRaw,
           loanAmount: loanRaw,
         }),

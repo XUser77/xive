@@ -25,9 +25,9 @@ import { useUserData, rawToWhole, wholeToRaw, balanceOf } from "../hooks/useUser
 import { useTxSender } from "../hooks/useTxSender";
 import {
   borrowIx,
-  depositCollateralIx,
+  depositIx,
   repayIx,
-  withdrawCollateralIx,
+  withdrawIx,
 } from "../xiveInstructions";
 import type { Position } from "../positions";
 import { type Collateral, priceToUsd } from "../collateral";
@@ -190,7 +190,7 @@ function ManageInner({
         title: `Add ${symbol} collateral`,
         detailLines: [['Action', `Add ${amt} ${symbol} to position`]],
         ixs: [
-          depositCollateralIx({
+          depositIx({
             user: publicKey,
             position: position.address,
             collateralMint: collateral.mint,
@@ -223,7 +223,7 @@ function ManageInner({
         title: `Withdraw ${symbol}`,
         detailLines: [['Action', `Withdraw ${amt} ${symbol}`]],
         ixs: [
-          withdrawCollateralIx({
+          withdrawIx({
             user: publicKey,
             position: position.address,
             collateralMint: collateral.mint,
@@ -306,7 +306,7 @@ function ManageInner({
         ],
         ixs: [
           repayIx({ user: publicKey, position: position.address, amount: debtRaw }),
-          withdrawCollateralIx({
+          withdrawIx({
             user: publicKey,
             position: position.address,
             collateralMint: collateral.mint,

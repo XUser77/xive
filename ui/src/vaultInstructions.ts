@@ -49,41 +49,74 @@ function u64LE(v: bigint): Buffer {
   return b;
 }
 
-function vaultActionKeys(user: PublicKey) {
-  const vault = vaultPda();
-  return [
-    { pubkey: user, isSigner: true, isWritable: true },
-    { pubkey: vault, isSigner: false, isWritable: false },
-    { pubkey: XUSD_MINT, isSigner: false, isWritable: true },
-    { pubkey: ata(user, XUSD_MINT), isSigner: false, isWritable: true },
-    { pubkey: ata(vault, XUSD_MINT), isSigner: false, isWritable: true },
-    { pubkey: LP_VAULT_MINT, isSigner: false, isWritable: true },
-    { pubkey: ata(user, LP_VAULT_MINT), isSigner: false, isWritable: true },
-    { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
-    { pubkey: ASSOCIATED_TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
-    { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
-  ];
-}
-
 export function vaultDepositIx(args: {
   user: PublicKey;
+  /** xUSD to deposit, in base units. */
   amount: bigint;
+  /** Minimum LP-xUSD shares to accept (slippage guard). Defaults to 0. */
+  minLpAmount?: bigint;
 }): TransactionInstruction {
+  const { user, amount, minLpAmount = 0n } = args;
+  const vault = vaultPda();
+  const xive = xivePda();
   return new TransactionInstruction({
     programId: VAULT_PROGRAM_ID,
-    keys: vaultActionKeys(args.user),
-    data: Buffer.concat([Buffer.from(DISCRIMINATOR_DEPOSIT), u64LE(args.amount)]),
+    keys: [
+      { pubkey: user, isSigner: true, isWritable: true },
+      { pubkey: vault, isSigner: false, isWritable: false },
+      { pubkey: xive, isSigner: false, isWritable: false },
+      { pubkey: LP_VAULT_MINT, isSigner: false, isWritable: true },
+      { pubkey: XUSD_MINT, isSigner: false, isWritable: false },
+      { pubkey: USDC_MINT, isSigner: false, isWritable: false },
+      { pubkey: ata(user, XUSD_MINT), isSigner: false, isWritable: true },
+      { pubkey: ata(vault, XUSD_MINT), isSigner: false, isWritable: true },
+      { pubkey: ata(vault, USDC_MINT), isSigner: false, isWritable: true },
+      { pubkey: ata(user, LP_VAULT_MINT), isSigner: false, isWritable: true },
+      { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+      { pubkey: ASSOCIATED_TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+    ],
+    data: Buffer.concat([
+      Buffer.from(DISCRIMINATOR_DEPOSIT),
+      u64LE(amount),
+      u64LE(minLpAmount),
+    ]),
   });
 }
 
 export function vaultWithdrawIx(args: {
   user: PublicKey;
+  /** LP-xUSD shares to burn, in base units. */
   lpAmount: bigint;
+  /** Minimum xUSD to accept back (slippage guard). Defaults to 0. */
+  minXusdAmount?: bigint;
 }): TransactionInstruction {
+  const { user, lpAmount, minXusdAmount = 0n } = args;
+  const vault = vaultPda();
+  const xive = xivePda();
   return new TransactionInstruction({
     programId: VAULT_PROGRAM_ID,
-    keys: vaultActionKeys(args.user),
-    data: Buffer.concat([Buffer.from(DISCRIMINATOR_WITHDRAW), u64LE(args.lpAmount)]),
+    keys: [
+      { pubkey: user, isSigner: true, isWritable: true },
+      { pubkey: vault, isSigner: false, isWritable: true },
+      { pubkey: xive, isSigner: false, isWritable: true },
+      { pubkey: LP_VAULT_MINT, isSigner: false, isWritable: true },
+      { pubkey: XUSD_MINT, isSigner: false, isWritable: true },
+      { pubkey: USDC_MINT, isSigner: false, isWritable: false },
+      { pubkey: ata(user, XUSD_MINT), isSigner: false, isWritable: true },
+      { pubkey: ata(vault, XUSD_MINT), isSigner: false, isWritable: true },
+      { pubkey: ata(vault, USDC_MINT), isSigner: false, isWritable: false },
+      { pubkey: ata(user, LP_VAULT_MINT), isSigner: false, isWritable: true },
+      { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+      { pubkey: ASSOCIATED_TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+      { pubkey: XIVE_PROGRAM_ID, isSigner: false, isWritable: false },
+    ],
+    data: Buffer.concat([
+      Buffer.from(DISCRIMINATOR_WITHDRAW),
+      u64LE(lpAmount),
+      u64LE(minXusdAmount),
+    ]),
   });
 }
 
@@ -134,6 +167,11 @@ function buildReadOnlyCtx(connection: Connection, payer: PublicKey): WhirlpoolCo
   return WhirlpoolContext.withProvider(provider, WHIRLPOOL_PROGRAM_ID);
 }
 
+// DEPRECATED / NOT WIRED UP: the on-chain `vault::liquidate` now performs the
+// collateral→USDC→xUSD swap through Jupiter (it takes `jupiter_swap_data: bytes`
+// and a `jupiter_program` account), not the two Orca Whirlpool hops this builder
+// constructs. This function targets the removed Orca flow and is currently unused;
+// it must be rewritten against the Jupiter route API before it can be called again.
 export async function buildVaultLiquidateIx(args: {
   connection: Connection;
   payer: PublicKey;

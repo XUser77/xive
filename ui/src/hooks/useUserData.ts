@@ -6,7 +6,7 @@ import { KNOWN_MINTS, XUSD_MINT, LP_VAULT_MINT } from "../config";
 import { ata, vaultPda } from "../pdas";
 import { fetchUserPositions, type Position } from "../positions";
 import { fetchCollaterals, type Collateral } from "../collateral";
-import { fetchUserCounter } from "../xiveInstructions";
+import { fetchWalletIndex } from "../xiveInstructions";
 
 const TOKEN_PROGRAM_ID = new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
 
@@ -22,7 +22,7 @@ export type UserData = {
   balances: WalletBalance[];
   vaultLpBalance: bigint;
   vaultXusdTotal: bigint;
-  userCounter: bigint | null;
+  walletIndex: bigint | null;
   collaterals: Collateral[];
   loading: boolean;
   refresh: () => void;
@@ -33,7 +33,7 @@ const DEFAULT: UserData = {
   balances: [],
   vaultLpBalance: 0n,
   vaultXusdTotal: 0n,
-  userCounter: null,
+  walletIndex: null,
   collaterals: [],
   loading: false,
   refresh: () => {},
@@ -69,14 +69,14 @@ export function useUserData(): UserData {
           solLamports,
           vaultLpInfo,
           vaultXusdInfo,
-          userCounter,
+          walletIndex,
         ] = await Promise.all([
           fetchUserPositions(connection, publicKey),
           connection.getParsedTokenAccountsByOwner(publicKey, { programId: TOKEN_PROGRAM_ID }, "confirmed"),
           connection.getBalance(publicKey, "confirmed"),
           connection.getTokenAccountBalance(ata(publicKey, LP_VAULT_MINT)).catch(() => null),
           connection.getTokenAccountBalance(ata(vaultPda(), XUSD_MINT)).catch(() => null),
-          fetchUserCounter(connection, publicKey).catch(() => null),
+          fetchWalletIndex(connection, publicKey).catch(() => null),
         ]);
 
         const balances: WalletBalance[] = [
@@ -105,7 +105,7 @@ export function useUserData(): UserData {
             balances,
             vaultLpBalance: vaultLpInfo ? BigInt(vaultLpInfo.value.amount) : 0n,
             vaultXusdTotal: vaultXusdInfo ? BigInt(vaultXusdInfo.value.amount) : 0n,
-            userCounter,
+            walletIndex,
             collaterals,
             loading: false,
             refresh,

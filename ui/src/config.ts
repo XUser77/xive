@@ -1,6 +1,6 @@
 import { PublicKey } from "@solana/web3.js";
 
-export const RPC_ENDPOINT = "https://xusd.tima.kz:8899";
+export const RPC_ENDPOINT = "http://localhost:8899";
 
 export const XIVE_PROGRAM_ID = new PublicKey(
   "xiveHxXiqHUkFnX5DsmTsAbByTZS5bdGGpdZ9wpmNCR",
