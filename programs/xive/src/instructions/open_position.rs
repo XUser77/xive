@@ -49,6 +49,14 @@ pub struct OpenPosition<'info> {
     pub borrower_collateral_ata: Box<Account<'info, TokenAccount>>,
 
     #[account(
+        init_if_needed,
+        payer = borrower,
+        associated_token::mint = xusd_mint,
+        associated_token::authority = xive,
+    )]
+    pub program_xusd_ata: Box<Account<'info, TokenAccount>>,
+
+    #[account(
         mut,
         associated_token::mint = collateral_mint,
         associated_token::authority = xive,
@@ -110,6 +118,7 @@ pub fn open_position(ctx: Context<OpenPosition>, collateral_amount: u64, loan_am
         ctx.accounts.token_program.key(),
         ctx.accounts.xusd_mint.to_account_info(),
         ctx.accounts.borrower_xusd_ata.to_account_info(),
+        ctx.accounts.program_xusd_ata.to_account_info(),
         loan_amount,
         &ctx.accounts.collateral,
         &ctx.accounts.collateral_mint,

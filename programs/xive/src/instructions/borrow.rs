@@ -27,6 +27,13 @@ pub struct Borrow<'info> {
 
     #[account(
         mut,
+        associated_token::mint = xusd_mint,
+        associated_token::authority = xive,
+    )]
+    pub program_xusd_ata: Account<'info, TokenAccount>,
+
+    #[account(
+        mut,
         address = XUSD_MINT_ADDRESS,
         mint::authority = xive,
     )]
@@ -64,6 +71,7 @@ pub fn borrow(ctx: Context<Borrow>, loan_amount: u64) -> Result<()> {
         ctx.accounts.token_program.key(),
         ctx.accounts.xusd_mint.to_account_info(),
         ctx.accounts.borrower_xusd_ata.to_account_info(),
+        ctx.accounts.program_xusd_ata.to_account_info(),
         loan_amount,
         &ctx.accounts.collateral,
         &ctx.accounts.collateral_mint,

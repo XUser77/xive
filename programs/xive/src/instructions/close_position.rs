@@ -23,34 +23,41 @@ pub struct ClosePosition<'info> {
         associated_token::mint = xusd_mint,
         associated_token::authority = borrower,
     )]
-    pub borrower_xusd_ata: Account<'info, TokenAccount>,
+    pub borrower_xusd_ata: Box<Account<'info, TokenAccount>>,
+
+    #[account(
+        mut,
+        associated_token::mint = xusd_mint,
+        associated_token::authority = xive,
+    )]
+    pub program_xusd_ata: Box<Account<'info, TokenAccount>>,
 
     #[account(
         mut,
         address = XUSD_MINT_ADDRESS,
         mint::authority = xive,
     )]
-    pub xusd_mint: Account<'info, Mint>,
+    pub xusd_mint: Box<Account<'info, Mint>>,
 
     #[account(
         mut,
         address = position.collateral_mint
     )]
-    pub collateral_mint: Account<'info, Mint>,
+    pub collateral_mint: Box<Account<'info, Mint>>,
 
     #[account(
         mut,
         associated_token::mint = collateral_mint,
         associated_token::authority = xive,
     )]
-    pub program_collateral_ata: Account<'info, TokenAccount>,
+    pub program_collateral_ata: Box<Account<'info, TokenAccount>>,
 
     #[account(
         mut,
         associated_token::mint = collateral_mint,
         associated_token::authority = borrower,
     )]
-    pub borrower_collateral_ata: Account<'info, TokenAccount>,
+    pub borrower_collateral_ata: Box<Account<'info, TokenAccount>>,
 
     #[account(
         seeds = [XIVE_SEED.as_bytes()],
@@ -68,12 +75,16 @@ pub fn close_position(ctx: Context<ClosePosition>) -> Result<()> {
 
     if position.loan_amount > 0 {
         let dept = position.loan_amount;
+        let borrower_balance = ctx.accounts.borrower_xusd_ata.amount;
         process_position::return_xusd(
            position,
+           &ctx.accounts.xive,
            ctx.accounts.token_program.key(),
            ctx.accounts.xusd_mint.to_account_info(),
            ctx.accounts.borrower_xusd_ata.to_account_info(),
+           ctx.accounts.program_xusd_ata.to_account_info(),
            ctx.accounts.borrower.to_account_info(),
+           borrower_balance,
            dept
         )?;
 

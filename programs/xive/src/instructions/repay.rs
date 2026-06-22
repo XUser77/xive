@@ -25,6 +25,13 @@ pub struct Repay<'info> {
 
     #[account(
         mut,
+        associated_token::mint = xusd_mint,
+        associated_token::authority = xive,
+    )]
+    pub program_xusd_ata: Account<'info, TokenAccount>,
+
+    #[account(
+        mut,
         address = XUSD_MINT_ADDRESS,
         mint::authority = xive,
     )]
@@ -42,12 +49,17 @@ pub struct Repay<'info> {
 
 pub fn repay(ctx: Context<Repay>, loan_amount: u64) -> Result<()> {
 
+    let borrower_balance = ctx.accounts.borrower_xusd_ata.amount;
+
     process_position::return_xusd(
         &mut ctx.accounts.position,
+        &ctx.accounts.xive,
         ctx.accounts.token_program.key(),
         ctx.accounts.xusd_mint.to_account_info(),
         ctx.accounts.borrower_xusd_ata.to_account_info(),
+        ctx.accounts.program_xusd_ata.to_account_info(),
         ctx.accounts.borrower.to_account_info(),
+        borrower_balance,
         loan_amount,
     )?;
 

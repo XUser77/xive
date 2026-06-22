@@ -25,6 +25,7 @@ import { useUserData, rawToWhole, wholeToRaw, balanceOf } from "../hooks/useUser
 import { useTxSender } from "../hooks/useTxSender";
 import {
   borrowIx,
+  closePositionIx,
   depositIx,
   repayIx,
   withdrawIx,
@@ -158,6 +159,14 @@ function ManageInner({
   const collateralBalWhole = collateralBal ? rawToWhole(collateralBal.rawBalance, collateralBal.decimals) : 0;
   const xusdBal = balances.find((b) => b.symbol === 'XUSD');
   const xusdBalWhole = xusdBal ? rawToWhole(xusdBal.rawBalance, XUSD_DECIMALS) : 0;
+
+  // To close, the borrower only needs the principal in their wallet — the
+  // origination fee portion of the debt is covered by xUSD the program already
+  // holds (minted to the xive PDA at borrow). Approximate the principal as
+  // debt × (1 − fee bps); the on-chain split is exact and fails safely.
+  const closeNeed = debtWhole * (1 - 50 / 10_000);
+  const canClose = xusdBalWhole + 1e-6 >= closeNeed;
+  const closeShortfall = Math.max(0, closeNeed - xusdBalWhole);
 
   const amt = parseFloat(amount) || 0;
 
@@ -295,9 +304,8 @@ function ManageInner({
     preview = [];
     canExecute = false;
     action = async () => {
-      // Compose: repay full debt then withdraw all collateral, in one tx.
-      const debtRaw = position.loanAmount;
-      const colRaw = position.collateralAmount;
+      // Single instruction: burns the borrower's principal + the fee held in the
+      // program's xUSD ATA, returns all collateral, and marks the position closed.
       await send({
         title: `Close ${symbol} position`,
         detailLines: [
@@ -305,12 +313,10 @@ function ManageInner({
           ['Receive back', `${colWhole.toLocaleString(undefined, { maximumFractionDigits: 4 })} ${symbol}`],
         ],
         ixs: [
-          repayIx({ user: publicKey, position: position.address, amount: debtRaw }),
-          withdrawIx({
+          closePositionIx({
             user: publicKey,
             position: position.address,
             collateralMint: collateral.mint,
-            amount: colRaw,
           }),
         ],
         onConfirmed: onAfter,
@@ -535,18 +541,18 @@ function ManageInner({
                 </div>
               </MCard>
               <button
-                disabled={busy || debtWhole > xusdBalWhole}
+                disabled={busy || !canClose}
                 onClick={submit}
                 style={btnDanger({
                   width: '100%',
                   padding: '13px 0',
                   fontSize: 14,
-                  opacity: busy || debtWhole > xusdBalWhole ? 0.4 : 1,
-                  cursor: busy || debtWhole > xusdBalWhole ? 'not-allowed' : 'pointer',
+                  opacity: busy || !canClose ? 0.4 : 1,
+                  cursor: busy || !canClose ? 'not-allowed' : 'pointer',
                 })}
               >
-                {debtWhole > xusdBalWhole
-                  ? `Need ${fmtUSD(debtWhole - xusdBalWhole, 2)} more XUSD`
+                {!canClose
+                  ? `Need ${fmtUSD(closeShortfall, 2)} more XUSD`
                   : busy
                   ? 'Submitting…'
                   : `Close position — repay ${fmtUSD(debtWhole, 2)} XUSD`}

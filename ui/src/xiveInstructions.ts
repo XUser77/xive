@@ -41,6 +41,9 @@ const DISCRIMINATOR_REPAY = new Uint8Array([
 const DISCRIMINATOR_SET_COLLATERAL_PRICE = new Uint8Array([
   207, 218, 194, 201, 118, 198, 249, 204,
 ]);
+const DISCRIMINATOR_CLOSE_POSITION = new Uint8Array([
+  123, 134, 81, 0, 49, 68, 98, 98,
+]);
 const DISCRIMINATOR_UPDATE_COLLATERAL = new Uint8Array([
   218, 227, 184, 124, 133, 81, 157, 131,
 ]);
@@ -167,6 +170,7 @@ export function openPositionIx(args: {
       { pubkey: collateralMint, isSigner: false, isWritable: false },
       { pubkey: ata(user, XUSD_MINT), isSigner: false, isWritable: true },
       { pubkey: ata(user, collateralMint), isSigner: false, isWritable: true },
+      { pubkey: ata(xive, XUSD_MINT), isSigner: false, isWritable: true },
       { pubkey: ata(xive, collateralMint), isSigner: false, isWritable: true },
       { pubkey: collateralPda(collateralMint), isSigner: false, isWritable: false },
       { pubkey: XUSD_MINT, isSigner: false, isWritable: true },
@@ -239,19 +243,49 @@ export function borrowIx(args: {
   amount: bigint;
 }): TransactionInstruction {
   const { user, position, collateralMint, amount } = args;
+  const xive = xivePda();
   return new TransactionInstruction({
     programId: XIVE_PROGRAM_ID,
     keys: [
       { pubkey: user, isSigner: true, isWritable: false },
       { pubkey: position, isSigner: false, isWritable: true },
       { pubkey: ata(user, XUSD_MINT), isSigner: false, isWritable: true },
+      { pubkey: ata(xive, XUSD_MINT), isSigner: false, isWritable: true },
       { pubkey: XUSD_MINT, isSigner: false, isWritable: true },
       { pubkey: collateralPda(collateralMint), isSigner: false, isWritable: false },
       { pubkey: collateralMint, isSigner: false, isWritable: false },
-      { pubkey: xivePda(), isSigner: false, isWritable: true },
+      { pubkey: xive, isSigner: false, isWritable: true },
       { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
     ],
     data: Buffer.concat([Buffer.from(DISCRIMINATOR_BORROW), u64LE(amount)]),
+  });
+}
+
+/// Repay the full remaining debt and return all collateral in one instruction.
+/// Burns the borrower's principal plus the fee held in the program's xUSD ATA,
+/// then transfers the collateral back and marks the position closed.
+export function closePositionIx(args: {
+  user: PublicKey;
+  position: PublicKey;
+  collateralMint: PublicKey;
+}): TransactionInstruction {
+  const { user, position, collateralMint } = args;
+  const xive = xivePda();
+  return new TransactionInstruction({
+    programId: XIVE_PROGRAM_ID,
+    keys: [
+      { pubkey: user, isSigner: true, isWritable: false },
+      { pubkey: position, isSigner: false, isWritable: true },
+      { pubkey: ata(user, XUSD_MINT), isSigner: false, isWritable: true },
+      { pubkey: ata(xive, XUSD_MINT), isSigner: false, isWritable: true },
+      { pubkey: XUSD_MINT, isSigner: false, isWritable: true },
+      { pubkey: collateralMint, isSigner: false, isWritable: true },
+      { pubkey: ata(xive, collateralMint), isSigner: false, isWritable: true },
+      { pubkey: ata(user, collateralMint), isSigner: false, isWritable: true },
+      { pubkey: xive, isSigner: false, isWritable: false },
+      { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+    ],
+    data: Buffer.from(DISCRIMINATOR_CLOSE_POSITION),
   });
 }
 
@@ -261,14 +295,16 @@ export function repayIx(args: {
   amount: bigint;
 }): TransactionInstruction {
   const { user, position, amount } = args;
+  const xive = xivePda();
   return new TransactionInstruction({
     programId: XIVE_PROGRAM_ID,
     keys: [
       { pubkey: user, isSigner: true, isWritable: false },
       { pubkey: position, isSigner: false, isWritable: true },
       { pubkey: ata(user, XUSD_MINT), isSigner: false, isWritable: true },
+      { pubkey: ata(xive, XUSD_MINT), isSigner: false, isWritable: true },
       { pubkey: XUSD_MINT, isSigner: false, isWritable: true },
-      { pubkey: xivePda(), isSigner: false, isWritable: false },
+      { pubkey: xive, isSigner: false, isWritable: false },
       { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
     ],
     data: Buffer.concat([Buffer.from(DISCRIMINATOR_REPAY), u64LE(amount)]),
