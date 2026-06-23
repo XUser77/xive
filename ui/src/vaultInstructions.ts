@@ -42,6 +42,17 @@ const DISCRIMINATOR_WITHDRAW = new Uint8Array([
 const DISCRIMINATOR_LIQUIDATE = new Uint8Array([
   223, 179, 226, 125, 48, 46, 39, 74,
 ]);
+const DISCRIMINATOR_BUY_USDC = new Uint8Array([
+  255, 72, 220, 134, 213, 71, 195, 32,
+]);
+const DISCRIMINATOR_BUY_XUSD = new Uint8Array([
+  118, 195, 49, 186, 252, 252, 148, 84,
+]);
+
+// Swap fee in basis points — must match programs/vault/src/constants.rs::SWAP_FEE.
+export const SWAP_FEE_BPS = 5n;
+// Minimum swap input in base units (programs/vault: require amount >= 10 * 1000).
+export const SWAP_MIN_AMOUNT = 10_000n;
 
 function u64LE(v: bigint): Buffer {
   const b = Buffer.alloc(8);
@@ -117,6 +128,61 @@ export function vaultWithdrawIx(args: {
       u64LE(lpAmount),
       u64LE(minXusdAmount),
     ]),
+  });
+}
+
+// Accounts are identical for both swap directions (vault::buy_usdc / buy_xusd).
+function swapKeys(swapper: PublicKey) {
+  const vault = vaultPda();
+  return [
+    { pubkey: swapper, isSigner: true, isWritable: true },
+    { pubkey: vault, isSigner: false, isWritable: true },
+    { pubkey: XUSD_MINT, isSigner: false, isWritable: false },
+    { pubkey: USDC_MINT, isSigner: false, isWritable: false },
+    { pubkey: ata(vault, XUSD_MINT), isSigner: false, isWritable: true },
+    { pubkey: ata(vault, USDC_MINT), isSigner: false, isWritable: true },
+    { pubkey: ata(swapper, XUSD_MINT), isSigner: false, isWritable: true },
+    { pubkey: ata(swapper, USDC_MINT), isSigner: false, isWritable: true },
+    { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+    { pubkey: ASSOCIATED_TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+    { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+  ];
+}
+
+/// Swap XUSD → USDC. `amount` is the XUSD paid in (base units); the swapper
+/// receives `amount − 0.05%` USDC.
+export function buyUsdcIx(args: { user: PublicKey; amount: bigint }): TransactionInstruction {
+  return new TransactionInstruction({
+    programId: VAULT_PROGRAM_ID,
+    keys: swapKeys(args.user),
+    data: Buffer.concat([Buffer.from(DISCRIMINATOR_BUY_USDC), u64LE(args.amount)]),
+  });
+}
+
+/// Swap USDC → XUSD. `amount` is the USDC paid in (base units); the swapper
+/// receives `amount − 0.05%` XUSD. If the vault is short on XUSD it mints the
+/// shortfall from xive (hence the extra xive / xive_program accounts).
+export function buyXusdIx(args: { user: PublicKey; amount: bigint }): TransactionInstruction {
+  const vault = vaultPda();
+  const xive = xivePda();
+  return new TransactionInstruction({
+    programId: VAULT_PROGRAM_ID,
+    keys: [
+      { pubkey: args.user, isSigner: true, isWritable: true },
+      { pubkey: vault, isSigner: false, isWritable: true },
+      { pubkey: XUSD_MINT, isSigner: false, isWritable: true },
+      { pubkey: USDC_MINT, isSigner: false, isWritable: false },
+      { pubkey: ata(vault, XUSD_MINT), isSigner: false, isWritable: true },
+      { pubkey: ata(vault, USDC_MINT), isSigner: false, isWritable: true },
+      { pubkey: ata(args.user, XUSD_MINT), isSigner: false, isWritable: true },
+      { pubkey: ata(args.user, USDC_MINT), isSigner: false, isWritable: true },
+      { pubkey: xive, isSigner: false, isWritable: true },
+      { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+      { pubkey: ASSOCIATED_TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+      { pubkey: XIVE_PROGRAM_ID, isSigner: false, isWritable: false },
+    ],
+    data: Buffer.concat([Buffer.from(DISCRIMINATOR_BUY_XUSD), u64LE(args.amount)]),
   });
 }
 

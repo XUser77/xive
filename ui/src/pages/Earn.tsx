@@ -46,7 +46,7 @@ function Locked() {
 
 function EarnFlow() {
   const { publicKey } = useWallet();
-  const { balances, vaultLpBalance, vaultXusdTotal, refresh, loading } = useUserData();
+  const { balances, vaultLpBalance, vaultNavRaw, lpSupply, refresh, loading } = useUserData();
   const { send } = useTxSender();
   const nav = useNavigate();
   const [tab, setTab] = useState<'deposit' | 'withdraw'>('deposit');
@@ -59,13 +59,11 @@ function EarnFlow() {
   }, [balances]);
 
   const vaultLpWhole = rawToWhole(vaultLpBalance, LP_VAULT_DECIMALS);
-  const vaultTvlWhole = rawToWhole(vaultXusdTotal, XUSD_DECIMALS);
+  const vaultTvlWhole = rawToWhole(vaultNavRaw, XUSD_DECIMALS);
 
-  // Approximate user's claim (LP shares are 1:1 at first, then dilute as TVL grows).
-  // For display only: shareOfPool * vaultTvl.
-  // We don't have direct access to lp_supply here, so display LP balance as a proxy.
-  const userClaim = vaultLpWhole; // 1:1 approximation
-  const sharePct = vaultTvlWhole > 0 ? (userClaim / vaultTvlWhole) * 100 : 0;
+  // User's claim = (their LP shares / total LP supply) × vault NAV.
+  const sharePct = lpSupply > 0n ? (Number(vaultLpBalance) / Number(lpSupply)) * 100 : 0;
+  const userClaim = (sharePct / 100) * vaultTvlWhole;
 
   const amt = parseFloat(amount) || 0;
   const cap = tab === 'deposit' ? xusdBal : vaultLpWhole;
@@ -173,7 +171,6 @@ function EarnFlow() {
           </MCard>
 
           <MCard>
-            <MLabel style={{ marginBottom: 14 }}>Your position</MLabel>
             {loading && vaultLpWhole === 0 ? (
               <>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
@@ -197,7 +194,7 @@ function EarnFlow() {
               <>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
                   <div>
-                    <div style={{ fontSize: 11.5, color: color.textDim, fontFamily: font.mono }}>DEPOSITED</div>
+                    <div style={{ fontSize: 11.5, color: color.textDim, fontFamily: font.mono }}>YOUR POSITION</div>
                     <div style={{ fontFamily: font.mono, fontSize: 26, marginTop: 4 }}>
                       {vaultLpWhole > 0 ? fmtUSD(userClaim) : '—'}
                     </div>

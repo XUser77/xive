@@ -37,6 +37,9 @@ function Connected() {
   const nav = useNavigate();
   const { positions, collaterals, balances, loading } = useUserData();
 
+  // Closed/liquidated positions (close_date != 0) live in the History page.
+  const openPositions = useMemo(() => positions.filter((p) => p.closeDate === 0n), [positions]);
+
   const collateralBy = useMemo(() => {
     const m = new Map<string, Collateral>();
     for (const c of collaterals) m.set(c.mint.toBase58(), c);
@@ -51,7 +54,7 @@ function Connected() {
     let collateralUsd = 0;
     let debtUsd = 0;
     let worstHealth = Infinity;
-    for (const p of positions) {
+    for (const p of openPositions) {
       const c = collateralBy.get(p.collateralMint.toBase58());
       const decimals = KNOWN_MINTS[p.collateralMint.toBase58()]?.decimals ?? 8;
       const colWhole = rawToWhole(p.collateralAmount, decimals);
@@ -72,16 +75,16 @@ function Connected() {
       collateralUsd,
       debtUsd,
       health: worstHealth === Infinity ? null : worstHealth,
-      positionCount: positions.length,
+      positionCount: openPositions.length,
     };
-  }, [positions, collateralBy, xusdBalance]);
+  }, [openPositions, collateralBy, xusdBalance]);
 
   return (
     <>
       <Header onBorrow={() => nav('/app/borrow')} onEarn={() => nav('/app/earn')} />
       <KpiRow {...totals} />
       <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: 20, marginTop: 20 }}>
-        <PositionsPanel positions={positions} collateralBy={collateralBy} loading={loading} onOpen={() => nav('/app/borrow')} />
+        <PositionsPanel positions={openPositions} collateralBy={collateralBy} loading={loading} onOpen={() => nav('/app/borrow')} />
         <SidePanel collaterals={collaterals} loading={loading} onPick={(mint) => nav(`/app/borrow?asset=${mint}`)} />
       </div>
     </>

@@ -2,8 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
 
-import { KNOWN_MINTS, XUSD_MINT, LP_VAULT_MINT } from "../config";
-import { ata, vaultPda } from "../pdas";
+import { KNOWN_MINTS, XUSD_MINT, USDC_MINT, LP_VAULT_MINT } from "../config";
+import { ata, vaultPda, xivePda } from "../pdas";
 import { fetchUserPositions, type Position } from "../positions";
 import { fetchCollaterals, type Collateral } from "../collateral";
 import { fetchWalletIndex } from "../xiveInstructions";
@@ -22,6 +22,10 @@ export type UserData = {
   balances: WalletBalance[];
   vaultLpBalance: bigint;
   vaultXusdTotal: bigint;
+  // Vault net asset value (TVL) in xUSD base units, matching the program's LP
+  // pricing: xusd_reserve + usdc_reserve + xive.vault_balance − vault fee assets.
+  vaultNavRaw: bigint;
+  lpSupply: bigint;
   walletIndex: bigint | null;
   collaterals: Collateral[];
   loading: boolean;
@@ -33,6 +37,8 @@ const DEFAULT: UserData = {
   balances: [],
   vaultLpBalance: 0n,
   vaultXusdTotal: 0n,
+  vaultNavRaw: 0n,
+  lpSupply: 0n,
   walletIndex: null,
   collaterals: [],
   loading: false,
@@ -63,21 +69,54 @@ export function useUserData(): UserData {
           return;
         }
 
+        const vault = vaultPda();
         const [
           positions,
           parsed,
           solLamports,
           vaultLpInfo,
           vaultXusdInfo,
+          vaultUsdcInfo,
+          xiveAccInfo,
+          vaultAccInfo,
+          lpSupplyInfo,
           walletIndex,
         ] = await Promise.all([
           fetchUserPositions(connection, publicKey),
           connection.getParsedTokenAccountsByOwner(publicKey, { programId: TOKEN_PROGRAM_ID }, "confirmed"),
           connection.getBalance(publicKey, "confirmed"),
           connection.getTokenAccountBalance(ata(publicKey, LP_VAULT_MINT)).catch(() => null),
-          connection.getTokenAccountBalance(ata(vaultPda(), XUSD_MINT)).catch(() => null),
+          connection.getTokenAccountBalance(ata(vault, XUSD_MINT)).catch(() => null),
+          connection.getTokenAccountBalance(ata(vault, USDC_MINT)).catch(() => null),
+          connection.getAccountInfo(xivePda(), "confirmed").catch(() => null),
+          connection.getAccountInfo(vault, "confirmed").catch(() => null),
+          connection.getTokenSupply(LP_VAULT_MINT).catch(() => null),
           fetchWalletIndex(connection, publicKey).catch(() => null),
         ]);
+
+        // Vault NAV (mirrors programs/vault get_lp_xusd_price):
+        //   xusd_reserve + usdc_reserve + xive.vault_balance − vault.xusd_assets − vault.usdc_assets
+        const vaultXusdRes = vaultXusdInfo ? BigInt(vaultXusdInfo.value.amount) : 0n;
+        const vaultUsdcRes = vaultUsdcInfo ? BigInt(vaultUsdcInfo.value.amount) : 0n;
+        let xiveVaultBalance = 0n;
+        if (xiveAccInfo) {
+          const d = xiveAccInfo.data;
+          // disc(8) + bump(1) + loan_fee(u16) + vault_balance(i64 @ 11)
+          xiveVaultBalance = new DataView(d.buffer, d.byteOffset, d.byteLength).getBigInt64(11, true);
+        }
+        let vaultXusdAssets = 0n;
+        let vaultUsdcAssets = 0n;
+        if (vaultAccInfo) {
+          const d = vaultAccInfo.data;
+          // disc(8) + bump(1) + xusd_assets(u64 @ 9) + usdc_assets(u64 @ 17)
+          const dv = new DataView(d.buffer, d.byteOffset, d.byteLength);
+          vaultXusdAssets = dv.getBigUint64(9, true);
+          vaultUsdcAssets = dv.getBigUint64(17, true);
+        }
+        let vaultNavRaw =
+          vaultXusdRes + vaultUsdcRes + xiveVaultBalance - vaultXusdAssets - vaultUsdcAssets;
+        if (vaultNavRaw < 0n) vaultNavRaw = 0n;
+        const lpSupply = lpSupplyInfo ? BigInt(lpSupplyInfo.value.amount) : 0n;
 
         const balances: WalletBalance[] = [
           {
@@ -104,7 +143,9 @@ export function useUserData(): UserData {
             positions,
             balances,
             vaultLpBalance: vaultLpInfo ? BigInt(vaultLpInfo.value.amount) : 0n,
-            vaultXusdTotal: vaultXusdInfo ? BigInt(vaultXusdInfo.value.amount) : 0n,
+            vaultXusdTotal: vaultXusdRes,
+            vaultNavRaw,
+            lpSupply,
             walletIndex,
             collaterals,
             loading: false,

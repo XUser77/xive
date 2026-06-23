@@ -9,13 +9,14 @@ import { RPC_ENDPOINT } from "../config";
 
 const RPC_DISPLAY = RPC_ENDPOINT.replace(/^https?:\/\//, "");
 
-export type NavKey = 'overview' | 'borrow' | 'earn' | 'markets' | 'activity' | 'admin';
+export type NavKey = 'overview' | 'borrow' | 'earn' | 'swap' | 'history' | 'activity' | 'admin';
 
 const NAV_ITEMS: { key: NavKey; label: string; icon: string; to: string; dimmedWhenDisconnected?: boolean }[] = [
   { key: 'overview', label: 'Overview', icon: '◐', to: '/app' },
   { key: 'borrow',   label: 'Borrow',   icon: '↓', to: '/app/borrow', dimmedWhenDisconnected: true },
   { key: 'earn',     label: 'Earn',     icon: '↑', to: '/app/earn',   dimmedWhenDisconnected: true },
-  { key: 'markets',  label: 'Markets',  icon: '◇', to: '/app/markets' },
+  { key: 'swap',     label: 'Swap',     icon: '⇄', to: '/app/swap',   dimmedWhenDisconnected: true },
+  { key: 'history',  label: 'History',  icon: '⌗', to: '/app/history', dimmedWhenDisconnected: true },
   { key: 'activity', label: 'Activity', icon: '≡', to: '/app/activity', dimmedWhenDisconnected: true },
   { key: 'admin',    label: 'Admin',    icon: '⚙',  to: '/app/admin' },
 ];
